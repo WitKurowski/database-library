@@ -138,6 +138,18 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract List<String> getProjection();
 
+	public List<T> save( final List<T> objects ) {
+		final List<T> savedObjects = new ArrayList<T>();
+
+		for ( final T object : objects ) {
+			final T savedObject = this.save( object );
+
+			savedObjects.add( savedObject );
+		}
+
+		return savedObjects;
+	}
+
 	public T save( final T object ) {
 		final Uri contentUri = this.getContentUri();
 		final Integer id = object.getId();
