@@ -1,5 +1,7 @@
 package com.wit.databaselibrary.contentprovider.databaseinfo;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,17 +15,24 @@ public abstract class DatabaseInfo {
 			UriMatcher.NO_MATCH );
 	private static int nextAvailableTableCode = 0;
 
-	protected static int getNextAvailableTableCode() {
+	private static int getNextAvailableTableCode() {
 		return DatabaseInfo.nextAvailableTableCode++;
 	}
 
 	private final String authority;
+	private final int objectCode = DatabaseInfo.getNextAvailableTableCode();
+	private final int objectIdCode = DatabaseInfo.getNextAvailableTableCode();
+	private final Map<String, String> projectionMap =
+			new HashMap<String, String>();
+	private final List<String> columnNames = new ArrayList<String>();
 
 	public DatabaseInfo( final String authority ) {
 		this.authority = authority;
 	}
 
-	protected abstract void addColumnName( final String columnName );
+	protected void addColumnName( final String columnName ) {
+		this.columnNames.add( columnName );
+	}
 
 	public String addSelectionById( final Uri uri,
 			final String existingSelection ) {
@@ -34,15 +43,23 @@ public abstract class DatabaseInfo {
 		return newSelection;
 	}
 
-	public abstract List<String> getColumnNames();
+	public List<String> getColumnNames() {
+		return this.columnNames;
+	}
 
 	public abstract DatabaseBaseColumns getColumns();
 
-	protected abstract int getObjectCode();
+	private int getObjectCode() {
+		return this.objectCode;
+	}
 
-	protected abstract int getObjectIdCode();
+	private int getObjectIdCode() {
+		return this.objectIdCode;
+	}
 
-	public abstract Map<String, String> getProjectionMap();
+	public Map<String, String> getProjectionMap() {
+		return this.projectionMap;
+	}
 
 	public abstract String getTableName();
 
