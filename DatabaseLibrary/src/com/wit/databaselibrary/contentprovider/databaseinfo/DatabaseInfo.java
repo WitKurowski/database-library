@@ -11,14 +11,13 @@ import android.net.Uri;
 import com.wit.databaselibrary.contentprovider.SimpleContentProvider.DatabaseBaseColumns;
 
 public abstract class DatabaseInfo {
-	private static final UriMatcher URI_MATCHER = new UriMatcher(
-			UriMatcher.NO_MATCH );
-	private static int nextAvailableTableCode = 0;
-
 	private static int getNextAvailableTableCode() {
 		return DatabaseInfo.nextAvailableTableCode++;
 	}
 
+	private static final UriMatcher URI_MATCHER = new UriMatcher(
+			UriMatcher.NO_MATCH );
+	private static int nextAvailableTableCode = 0;
 	private final String authority;
 	private final int objectCode = DatabaseInfo.getNextAvailableTableCode();
 	private final int objectIdCode = DatabaseInfo.getNextAvailableTableCode();
@@ -30,11 +29,11 @@ public abstract class DatabaseInfo {
 		this.authority = authority;
 	}
 
-	protected void addColumnName( final String columnName ) {
+	protected final void addColumnName( final String columnName ) {
 		this.columnNames.add( columnName );
 	}
 
-	public String addSelectionById( final Uri uri,
+	public final String addSelectionById( final Uri uri,
 			final String existingSelection ) {
 		final String newSelection =
 				existingSelection + DatabaseBaseColumns.ID + " = "
@@ -43,21 +42,21 @@ public abstract class DatabaseInfo {
 		return newSelection;
 	}
 
-	public List<String> getColumnNames() {
+	public final List<String> getColumnNames() {
 		return this.columnNames;
 	}
 
 	public abstract DatabaseBaseColumns getColumns();
 
-	private int getObjectCode() {
+	private final int getObjectCode() {
 		return this.objectCode;
 	}
 
-	private int getObjectIdCode() {
+	private final int getObjectIdCode() {
 		return this.objectIdCode;
 	}
 
-	public Map<String, String> getProjectionMap() {
+	public final Map<String, String> getProjectionMap() {
 		return this.projectionMap;
 	}
 
@@ -65,7 +64,7 @@ public abstract class DatabaseInfo {
 
 	public abstract void setupColumnNames();
 
-	public void setupProjectionMap() {
+	public final void setupProjectionMap() {
 		final List<String> columnNames = this.getColumnNames();
 		final Map<String, String> projectionMap = this.getProjectionMap();
 
@@ -74,7 +73,7 @@ public abstract class DatabaseInfo {
 		}
 	}
 
-	public void setupUriMatcher() {
+	public final void setupUriMatcher() {
 		final String tableName = this.getTableName();
 		final int objectCode = this.getObjectCode();
 		final int objectIdCode = this.getObjectIdCode();
@@ -84,11 +83,12 @@ public abstract class DatabaseInfo {
 				objectIdCode );
 	}
 
-	public boolean uriMatches( final Uri uri ) {
+	public final boolean uriMatches( final Uri uri ) {
 		return this.uriMatches( uri, true, true );
 	}
 
-	private boolean uriMatches( final Uri uri, final boolean matchOnObjectCode,
+	private final boolean uriMatches( final Uri uri,
+			final boolean matchOnObjectCode,
 			final boolean matchOnObjectIdCode ) {
 		final int matchResult = DatabaseInfo.URI_MATCHER.match( uri );
 		final int objectCode = this.getObjectCode();
@@ -105,11 +105,11 @@ public abstract class DatabaseInfo {
 		return match;
 	}
 
-	public boolean uriMatchesObject( final Uri uri ) {
+	public final boolean uriMatchesObject( final Uri uri ) {
 		return this.uriMatches( uri, true, false );
 	}
 
-	public boolean uriMatchesObjectId( final Uri uri ) {
+	public final boolean uriMatchesObjectId( final Uri uri ) {
 		return this.uriMatches( uri, false, true );
 	}
 }
