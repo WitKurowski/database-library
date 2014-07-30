@@ -141,8 +141,16 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		final String tableName = databaseBaseColumns.getTableName();
 		final Uri contentUri = databaseBaseColumns.getContentUri();
+		final String nullColumnHack;
+
+		if ( contentValues.size() == 0 ) {
+			nullColumnHack = DatabaseBaseColumns.ID;
+		} else {
+			nullColumnHack = null;
+		}
+
 		final long rowId =
-				sqLiteDatabase.insert( tableName, null, contentValues );
+				sqLiteDatabase.insert( tableName, nullColumnHack, contentValues );
 
 		if ( rowId > 0 ) {
 			final Uri contentUriWithAppendedId =
