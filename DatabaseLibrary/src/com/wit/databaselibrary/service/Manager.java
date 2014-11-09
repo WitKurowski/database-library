@@ -131,6 +131,8 @@ public abstract class Manager<T extends DatabaseObject> {
 			object = null;
 		}
 
+		cursor.close();
+
 		return object;
 	}
 
