@@ -7,8 +7,8 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
+import android.provider.BaseColumns;
 
-import com.wit.databaselibrary.contentprovider.SimpleContentProvider;
 import com.wit.databaselibrary.model.DatabaseObject;
 
 public abstract class Manager<T extends DatabaseObject> {
@@ -27,9 +27,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	public int delete( final T object ) {
 		final Uri contentUri = this.getContentUri();
 		final Integer id = object.getId();
-		final String whereClause =
-				SimpleContentProvider.DatabaseBaseColumns.ID + "="
-						+ id.intValue();
+		final String whereClause = BaseColumns._ID + "=" + id.intValue();
 
 		final int numberOfRowsDelete =
 				this.contentResolver.delete( contentUri, whereClause, null );
@@ -66,8 +64,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	public T get( final int id ) {
 		final Uri contentUri = this.getContentUri();
 		final List<String> projection = this.getProjection();
-		final String selection =
-				SimpleContentProvider.DatabaseBaseColumns.ID + " = ?";
+		final String selection = BaseColumns._ID + " = ?";
 		final List<String> selectionArgs = new ArrayList<String>();
 
 		selectionArgs.add( Integer.toString( id ) );
@@ -164,9 +161,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 			savedObject = this.get( uri );
 		} else {
-			final String whereClause =
-					SimpleContentProvider.DatabaseBaseColumns.ID + "="
-							+ id.intValue();
+			final String whereClause = BaseColumns._ID + "=" + id.intValue();
 
 			this.contentResolver.update( contentUri, contentValues,
 					whereClause, null );

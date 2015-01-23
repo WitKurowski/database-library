@@ -19,7 +19,6 @@ import com.wit.databaselibrary.contentprovider.databaseinfo.DatabaseInfo;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	public static abstract class DatabaseBaseColumns implements BaseColumns {
-		public static final String ID = "_id";
 	}
 
 	protected static final List<DatabaseInfo> DATABASE_INFOS =
@@ -123,7 +122,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		final String nullColumnHack;
 
 		if ( contentValues.size() == 0 ) {
-			nullColumnHack = DatabaseBaseColumns.ID;
+			nullColumnHack = BaseColumns._ID;
 		} else {
 			nullColumnHack = null;
 		}

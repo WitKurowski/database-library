@@ -7,6 +7,7 @@ import java.util.Map;
 
 import android.content.UriMatcher;
 import android.net.Uri;
+import android.provider.BaseColumns;
 
 import com.wit.databaselibrary.contentprovider.SimpleContentProvider.DatabaseBaseColumns;
 
@@ -36,7 +37,7 @@ public abstract class DatabaseInfo {
 	public final String addSelectionById( final Uri uri,
 			final String existingSelection ) {
 		final String newSelection =
-				existingSelection + DatabaseBaseColumns.ID + " = "
+				existingSelection + BaseColumns._ID + " = "
 						+ uri.getLastPathSegment();
 
 		return newSelection;
