@@ -21,23 +21,12 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public static abstract class DatabaseBaseColumns implements BaseColumns {
 		public static final String ID = "_id";
 
-		protected abstract String getAuthority();
-
 		public String getContentType() {
 			final String tableName = this.getTableName();
 			final String contentType =
 					"vnd.android.cursor.dir/vnd.wit." + tableName;
 
 			return contentType;
-		}
-
-		public Uri getContentUri() {
-			final String tableName = this.getTableName();
-			final String authority = this.getAuthority();
-			final Uri contentUri =
-					Uri.parse( "content://" + authority + "/" + tableName );
-
-			return contentUri;
 		}
 
 		public abstract String getTableName();
@@ -119,15 +108,15 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	@Override
 	public Uri insert( final Uri uri, ContentValues contentValues ) {
-		DatabaseBaseColumns databaseBaseColumns = null;
+		DatabaseInfo databaseInfo = null;
 
-		for ( final DatabaseInfo databaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
-			if ( databaseInfo.uriMatchesObject( uri ) ) {
-				databaseBaseColumns = databaseInfo.getColumns();
+		for ( final DatabaseInfo currentDatabaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
+			if ( currentDatabaseInfo.uriMatchesObject( uri ) ) {
+				databaseInfo = currentDatabaseInfo;
 			}
 		}
 
-		if ( databaseBaseColumns == null ) {
+		if ( databaseInfo == null ) {
 			throw new IllegalArgumentException( "Unknown URI: " + uri );
 		}
 
@@ -139,8 +128,10 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			contentValues = new ContentValues();
 		}
 
+		final DatabaseBaseColumns databaseBaseColumns =
+				databaseInfo.getColumns();
 		final String tableName = databaseBaseColumns.getTableName();
-		final Uri contentUri = databaseBaseColumns.getContentUri();
+		final Uri contentUri = databaseInfo.getContentUri();
 		final String nullColumnHack;
 
 		if ( contentValues.size() == 0 ) {

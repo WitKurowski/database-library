@@ -42,11 +42,24 @@ public abstract class DatabaseInfo {
 		return newSelection;
 	}
 
+	protected String getAuthority() {
+		return this.authority;
+	}
+
 	public final List<String> getColumnNames() {
 		return this.columnNames;
 	}
 
 	public abstract DatabaseBaseColumns getColumns();
+
+	public Uri getContentUri() {
+		final String tableName = this.getTableName();
+		final String authority = this.getAuthority();
+		final Uri contentUri =
+				Uri.parse( "content://" + authority + "/" + tableName );
+
+		return contentUri;
+	}
 
 	private final int getObjectCode() {
 		return this.objectCode;
@@ -88,8 +101,7 @@ public abstract class DatabaseInfo {
 	}
 
 	private final boolean uriMatches( final Uri uri,
-			final boolean matchOnObjectCode,
-			final boolean matchOnObjectIdCode ) {
+			final boolean matchOnObjectCode, final boolean matchOnObjectIdCode ) {
 		final int matchResult = DatabaseInfo.URI_MATCHER.match( uri );
 		final int objectCode = this.getObjectCode();
 		final int objectIdCode = this.getObjectIdCode();
