@@ -52,6 +52,14 @@ public abstract class DatabaseInfo {
 
 	public abstract DatabaseBaseColumns getColumns();
 
+	public String getContentType() {
+		final String tableName = this.getTableName();
+		final String contentType =
+				"vnd.android.cursor.dir/vnd.wit." + tableName;
+
+		return contentType;
+	}
+
 	public Uri getContentUri() {
 		final String tableName = this.getTableName();
 		final String authority = this.getAuthority();

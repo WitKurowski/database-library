@@ -21,14 +21,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public static abstract class DatabaseBaseColumns implements BaseColumns {
 		public static final String ID = "_id";
 
-		public String getContentType() {
-			final String tableName = this.getTableName();
-			final String contentType =
-					"vnd.android.cursor.dir/vnd.wit." + tableName;
-
-			return contentType;
-		}
-
 		public abstract String getTableName();
 	}
 
@@ -89,19 +81,19 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	@Override
 	public String getType( final Uri uri ) {
-		DatabaseBaseColumns databaseBaseColumns = null;
+		DatabaseInfo databaseInfo = null;
 
-		for ( final DatabaseInfo databaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
+		for ( final DatabaseInfo currentDatabaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
 			if ( databaseInfo.uriMatchesObject( uri ) ) {
-				databaseBaseColumns = databaseInfo.getColumns();
+				databaseInfo = currentDatabaseInfo;
 			}
 		}
 
-		if ( databaseBaseColumns == null ) {
+		if ( databaseInfo == null ) {
 			throw new IllegalArgumentException( "Unknown URI: " + uri );
 		}
 
-		final String contentType = databaseBaseColumns.getContentType();
+		final String contentType = databaseInfo.getContentType();
 
 		return contentType;
 	}
@@ -128,9 +120,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			contentValues = new ContentValues();
 		}
 
-		final DatabaseBaseColumns databaseBaseColumns =
-				databaseInfo.getColumns();
-		final String tableName = databaseBaseColumns.getTableName();
+		final String tableName = databaseInfo.getTableName();
 		final Uri contentUri = databaseInfo.getContentUri();
 		final String nullColumnHack;
 
