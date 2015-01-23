@@ -20,8 +20,6 @@ import com.wit.databaselibrary.contentprovider.databaseinfo.DatabaseInfo;
 public abstract class SimpleContentProvider extends ContentProvider {
 	public static abstract class DatabaseBaseColumns implements BaseColumns {
 		public static final String ID = "_id";
-
-		public abstract String getTableName();
 	}
 
 	protected static final List<DatabaseInfo> DATABASE_INFOS =
