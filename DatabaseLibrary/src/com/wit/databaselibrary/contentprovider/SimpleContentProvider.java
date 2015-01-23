@@ -18,9 +18,6 @@ import android.provider.BaseColumns;
 import com.wit.databaselibrary.contentprovider.databaseinfo.DatabaseInfo;
 
 public abstract class SimpleContentProvider extends ContentProvider {
-	public static abstract class DatabaseBaseColumns implements BaseColumns {
-	}
-
 	protected static final List<DatabaseInfo> DATABASE_INFOS =
 			new ArrayList<DatabaseInfo>();
 

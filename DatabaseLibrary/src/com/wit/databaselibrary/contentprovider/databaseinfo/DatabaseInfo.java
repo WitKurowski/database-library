@@ -9,8 +9,6 @@ import android.content.UriMatcher;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
-import com.wit.databaselibrary.contentprovider.SimpleContentProvider.DatabaseBaseColumns;
-
 public abstract class DatabaseInfo {
 	private static int getNextAvailableTableCode() {
 		return DatabaseInfo.nextAvailableTableCode++;
@@ -50,8 +48,6 @@ public abstract class DatabaseInfo {
 	public final List<String> getColumnNames() {
 		return this.columnNames;
 	}
-
-	public abstract DatabaseBaseColumns getColumns();
 
 	public String getContentType() {
 		final String tableName = this.getTableName();
