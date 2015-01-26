@@ -41,10 +41,6 @@ public abstract class Contract {
 		return newSelection;
 	}
 
-	protected String getAuthority() {
-		return this.authority;
-	}
-
 	public final List<String> getColumnNames() {
 		return this.columnNames;
 	}
@@ -59,9 +55,8 @@ public abstract class Contract {
 
 	public Uri getContentUri() {
 		final String tableName = this.getTableName();
-		final String authority = this.getAuthority();
 		final Uri contentUri =
-				Uri.parse( "content://" + authority + "/" + tableName );
+				Uri.parse( "content://" + this.authority + "/" + tableName );
 
 		return contentUri;
 	}
