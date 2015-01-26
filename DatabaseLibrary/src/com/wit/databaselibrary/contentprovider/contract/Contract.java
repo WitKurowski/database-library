@@ -1,6 +1,5 @@
 package com.wit.databaselibrary.contentprovider.contract;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,14 +21,11 @@ public abstract class Contract {
 	private final int objectIdCode = Contract.getNextAvailableTableCode();
 	private final Map<String, String> projectionMap =
 			new HashMap<String, String>();
-	private final List<String> columnNames = new ArrayList<String>();
+	private final List<String> columnNames;
 
-	public Contract( final String authority ) {
+	public Contract( final String authority, final List<String> columnNames ) {
 		this.authority = authority;
-	}
-
-	protected final void addColumnName( final String columnName ) {
-		this.columnNames.add( columnName );
+		this.columnNames = columnNames;
 	}
 
 	public final String addSelectionById( final Uri uri,
@@ -75,13 +71,10 @@ public abstract class Contract {
 
 	public abstract String getTableName();
 
-	public abstract void setupColumnNames();
-
 	public final void setupProjectionMap() {
-		final List<String> columnNames = this.getColumnNames();
 		final Map<String, String> projectionMap = this.getProjectionMap();
 
-		for ( final String columnName : columnNames ) {
+		for ( final String columnName : this.columnNames ) {
 			projectionMap.put( columnName, columnName );
 		}
 	}

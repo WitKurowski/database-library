@@ -24,7 +24,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		for ( final Contract contract : contracts ) {
 			contract.setupUriMatcher();
-			contract.setupColumnNames();
 			contract.setupProjectionMap();
 		}
 	}
