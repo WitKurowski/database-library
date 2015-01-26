@@ -27,6 +27,7 @@ public abstract class Contract {
 		this.authority = authority;
 		this.columnNames = columnNames;
 
+		this.setupUriMatcher();
 		this.setupProjectionMap();
 	}
 
@@ -79,7 +80,7 @@ public abstract class Contract {
 		}
 	}
 
-	public final void setupUriMatcher() {
+	private void setupUriMatcher() {
 		final String tableName = this.getTableName();
 		final int objectCode = this.getObjectCode();
 		final int objectIdCode = this.getObjectIdCode();

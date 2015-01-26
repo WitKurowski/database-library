@@ -21,10 +21,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	public SimpleContentProvider( final List<Contract> contracts ) {
 		this.contracts = contracts;
-
-		for ( final Contract contract : contracts ) {
-			contract.setupUriMatcher();
-		}
 	}
 
 	private String adjustSelection( final Uri uri, String selection ) {
