@@ -26,6 +26,8 @@ public abstract class Contract {
 	public Contract( final String authority, final List<String> columnNames ) {
 		this.authority = authority;
 		this.columnNames = columnNames;
+
+		this.setupProjectionMap();
 	}
 
 	public final String addSelectionById( final Uri uri,
@@ -71,7 +73,7 @@ public abstract class Contract {
 
 	public abstract String getTableName();
 
-	public final void setupProjectionMap() {
+	private void setupProjectionMap() {
 		for ( final String columnName : this.columnNames ) {
 			this.projectionMap.put( columnName, columnName );
 		}
