@@ -1,6 +1,5 @@
 package com.wit.databaselibrary.contentprovider;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,10 +17,20 @@ import android.provider.BaseColumns;
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 
 public abstract class SimpleContentProvider extends ContentProvider {
-	protected static final List<Contract> CONTRACTS = new ArrayList<Contract>();
+	private final List<Contract> contracts;
+
+	public SimpleContentProvider( final List<Contract> contracts ) {
+		this.contracts = contracts;
+
+		for ( final Contract contract : contracts ) {
+			contract.setupUriMatcher();
+			contract.setupColumnNames();
+			contract.setupProjectionMap();
+		}
+	}
 
 	private String adjustSelection( final Uri uri, String selection ) {
-		for ( final Contract contract : SimpleContentProvider.CONTRACTS ) {
+		for ( final Contract contract : this.contracts ) {
 			if ( contract.uriMatchesObjectId( uri ) ) {
 				selection = contract.addSelectionById( uri, selection );
 
@@ -57,7 +66,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	private String getTableName( final Uri uri ) {
 		String tableName = null;
 
-		for ( final Contract contract : SimpleContentProvider.CONTRACTS ) {
+		for ( final Contract contract : this.contracts ) {
 			if ( contract.uriMatches( uri ) ) {
 				tableName = contract.getTableName();
 
@@ -76,7 +85,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public String getType( final Uri uri ) {
 		Contract contract = null;
 
-		for ( final Contract currentContract : SimpleContentProvider.CONTRACTS ) {
+		for ( final Contract currentContract : this.contracts ) {
 			if ( contract.uriMatchesObject( uri ) ) {
 				contract = currentContract;
 			}
@@ -95,7 +104,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public Uri insert( final Uri uri, ContentValues contentValues ) {
 		Contract contract = null;
 
-		for ( final Contract currentContract : SimpleContentProvider.CONTRACTS ) {
+		for ( final Contract currentContract : this.contracts ) {
 			if ( currentContract.uriMatchesObject( uri ) ) {
 				contract = currentContract;
 			}
@@ -145,7 +154,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			final String sortOrder ) {
 		Map<String, String> projectionMap = null;
 
-		for ( final Contract contract : SimpleContentProvider.CONTRACTS ) {
+		for ( final Contract contract : this.contracts ) {
 			if ( contract.uriMatches( uri ) ) {
 				projectionMap = contract.getProjectionMap();
 			}
