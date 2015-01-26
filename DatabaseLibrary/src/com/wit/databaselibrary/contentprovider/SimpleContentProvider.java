@@ -15,7 +15,7 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
-import com.wit.databaselibrary.contentprovider.databaseinfo.Contract;
+import com.wit.databaselibrary.contentprovider.contract.Contract;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	protected static final List<Contract> CONTRACTS = new ArrayList<Contract>();

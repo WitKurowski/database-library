@@ -1,4 +1,4 @@
-package com.wit.databaselibrary.contentprovider.databaseinfo;
+package com.wit.databaselibrary.contentprovider.contract;
 
 import java.util.ArrayList;
 import java.util.HashMap;
