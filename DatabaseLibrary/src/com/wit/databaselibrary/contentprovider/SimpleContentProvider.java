@@ -15,16 +15,15 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
-import com.wit.databaselibrary.contentprovider.databaseinfo.DatabaseInfo;
+import com.wit.databaselibrary.contentprovider.databaseinfo.Contract;
 
 public abstract class SimpleContentProvider extends ContentProvider {
-	protected static final List<DatabaseInfo> DATABASE_INFOS =
-			new ArrayList<DatabaseInfo>();
+	protected static final List<Contract> CONTRACTS = new ArrayList<Contract>();
 
 	private String adjustSelection( final Uri uri, String selection ) {
-		for ( final DatabaseInfo databaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
-			if ( databaseInfo.uriMatchesObjectId( uri ) ) {
-				selection = databaseInfo.addSelectionById( uri, selection );
+		for ( final Contract contract : SimpleContentProvider.CONTRACTS ) {
+			if ( contract.uriMatchesObjectId( uri ) ) {
+				selection = contract.addSelectionById( uri, selection );
 
 				break;
 			}
@@ -58,9 +57,9 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	private String getTableName( final Uri uri ) {
 		String tableName = null;
 
-		for ( final DatabaseInfo databaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
-			if ( databaseInfo.uriMatches( uri ) ) {
-				tableName = databaseInfo.getTableName();
+		for ( final Contract contract : SimpleContentProvider.CONTRACTS ) {
+			if ( contract.uriMatches( uri ) ) {
+				tableName = contract.getTableName();
 
 				break;
 			}
@@ -75,34 +74,34 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	@Override
 	public String getType( final Uri uri ) {
-		DatabaseInfo databaseInfo = null;
+		Contract contract = null;
 
-		for ( final DatabaseInfo currentDatabaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
-			if ( databaseInfo.uriMatchesObject( uri ) ) {
-				databaseInfo = currentDatabaseInfo;
+		for ( final Contract currentContract : SimpleContentProvider.CONTRACTS ) {
+			if ( contract.uriMatchesObject( uri ) ) {
+				contract = currentContract;
 			}
 		}
 
-		if ( databaseInfo == null ) {
+		if ( contract == null ) {
 			throw new IllegalArgumentException( "Unknown URI: " + uri );
 		}
 
-		final String contentType = databaseInfo.getContentType();
+		final String contentType = contract.getContentType();
 
 		return contentType;
 	}
 
 	@Override
 	public Uri insert( final Uri uri, ContentValues contentValues ) {
-		DatabaseInfo databaseInfo = null;
+		Contract contract = null;
 
-		for ( final DatabaseInfo currentDatabaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
-			if ( currentDatabaseInfo.uriMatchesObject( uri ) ) {
-				databaseInfo = currentDatabaseInfo;
+		for ( final Contract currentContract : SimpleContentProvider.CONTRACTS ) {
+			if ( currentContract.uriMatchesObject( uri ) ) {
+				contract = currentContract;
 			}
 		}
 
-		if ( databaseInfo == null ) {
+		if ( contract == null ) {
 			throw new IllegalArgumentException( "Unknown URI: " + uri );
 		}
 
@@ -114,8 +113,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			contentValues = new ContentValues();
 		}
 
-		final String tableName = databaseInfo.getTableName();
-		final Uri contentUri = databaseInfo.getContentUri();
+		final String tableName = contract.getTableName();
+		final Uri contentUri = contract.getContentUri();
 		final String nullColumnHack;
 
 		if ( contentValues.size() == 0 ) {
@@ -146,9 +145,9 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			final String sortOrder ) {
 		Map<String, String> projectionMap = null;
 
-		for ( final DatabaseInfo databaseInfo : SimpleContentProvider.DATABASE_INFOS ) {
-			if ( databaseInfo.uriMatches( uri ) ) {
-				projectionMap = databaseInfo.getProjectionMap();
+		for ( final Contract contract : SimpleContentProvider.CONTRACTS ) {
+			if ( contract.uriMatches( uri ) ) {
+				projectionMap = contract.getProjectionMap();
 			}
 		}
 

@@ -9,22 +9,22 @@ import android.content.UriMatcher;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
-public abstract class DatabaseInfo {
+public abstract class Contract {
 	private static int getNextAvailableTableCode() {
-		return DatabaseInfo.nextAvailableTableCode++;
+		return Contract.nextAvailableTableCode++;
 	}
 
 	private static final UriMatcher URI_MATCHER = new UriMatcher(
 			UriMatcher.NO_MATCH );
 	private static int nextAvailableTableCode = 0;
 	private final String authority;
-	private final int objectCode = DatabaseInfo.getNextAvailableTableCode();
-	private final int objectIdCode = DatabaseInfo.getNextAvailableTableCode();
+	private final int objectCode = Contract.getNextAvailableTableCode();
+	private final int objectIdCode = Contract.getNextAvailableTableCode();
 	private final Map<String, String> projectionMap =
 			new HashMap<String, String>();
 	private final List<String> columnNames = new ArrayList<String>();
 
-	public DatabaseInfo( final String authority ) {
+	public Contract( final String authority ) {
 		this.authority = authority;
 	}
 
@@ -96,8 +96,8 @@ public abstract class DatabaseInfo {
 		final int objectCode = this.getObjectCode();
 		final int objectIdCode = this.getObjectIdCode();
 
-		DatabaseInfo.URI_MATCHER.addURI( this.authority, tableName, objectCode );
-		DatabaseInfo.URI_MATCHER.addURI( this.authority, tableName + "/#",
+		Contract.URI_MATCHER.addURI( this.authority, tableName, objectCode );
+		Contract.URI_MATCHER.addURI( this.authority, tableName + "/#",
 				objectIdCode );
 	}
 
@@ -107,7 +107,7 @@ public abstract class DatabaseInfo {
 
 	private final boolean uriMatches( final Uri uri,
 			final boolean matchOnObjectCode, final boolean matchOnObjectIdCode ) {
-		final int matchResult = DatabaseInfo.URI_MATCHER.match( uri );
+		final int matchResult = Contract.URI_MATCHER.match( uri );
 		final int objectCode = this.getObjectCode();
 		final int objectIdCode = this.getObjectIdCode();
 		final boolean match;
