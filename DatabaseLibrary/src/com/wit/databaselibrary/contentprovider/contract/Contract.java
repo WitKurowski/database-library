@@ -72,10 +72,8 @@ public abstract class Contract {
 	public abstract String getTableName();
 
 	public final void setupProjectionMap() {
-		final Map<String, String> projectionMap = this.getProjectionMap();
-
 		for ( final String columnName : this.columnNames ) {
-			projectionMap.put( columnName, columnName );
+			this.projectionMap.put( columnName, columnName );
 		}
 	}
 
