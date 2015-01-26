@@ -60,14 +60,6 @@ public abstract class Contract {
 		return contentUri;
 	}
 
-	private final int getObjectCode() {
-		return this.objectCode;
-	}
-
-	private final int getObjectIdCode() {
-		return this.objectIdCode;
-	}
-
 	public final Map<String, String> getProjectionMap() {
 		return this.projectionMap;
 	}
@@ -82,12 +74,10 @@ public abstract class Contract {
 
 	private void setupUriMatcher() {
 		final String tableName = this.getTableName();
-		final int objectCode = this.getObjectCode();
-		final int objectIdCode = this.getObjectIdCode();
 
-		Contract.URI_MATCHER.addURI( this.authority, tableName, objectCode );
+		Contract.URI_MATCHER.addURI( this.authority, tableName, this.objectCode );
 		Contract.URI_MATCHER.addURI( this.authority, tableName + "/#",
-				objectIdCode );
+				this.objectIdCode );
 	}
 
 	public final boolean uriMatches( final Uri uri ) {
@@ -97,12 +87,10 @@ public abstract class Contract {
 	private final boolean uriMatches( final Uri uri,
 			final boolean matchOnObjectCode, final boolean matchOnObjectIdCode ) {
 		final int matchResult = Contract.URI_MATCHER.match( uri );
-		final int objectCode = this.getObjectCode();
-		final int objectIdCode = this.getObjectIdCode();
 		final boolean match;
 
-		if ( ( matchOnObjectCode && ( matchResult == objectCode ) )
-				|| ( matchOnObjectIdCode && ( matchResult == objectIdCode ) ) ) {
+		if ( ( matchOnObjectCode && ( matchResult == this.objectCode ) )
+				|| ( matchOnObjectIdCode && ( matchResult == this.objectIdCode ) ) ) {
 			match = true;
 		} else {
 			match = false;
