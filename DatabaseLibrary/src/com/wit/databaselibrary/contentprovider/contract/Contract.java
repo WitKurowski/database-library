@@ -45,7 +45,7 @@ public abstract class Contract {
 		return this.columnNames;
 	}
 
-	public String getContentType() {
+	public final String getContentType() {
 		final String tableName = this.getTableName();
 		final String contentType =
 				ContentResolver.CURSOR_DIR_BASE_TYPE+ "/vnd.wit." + tableName;
