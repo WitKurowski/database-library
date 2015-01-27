@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import android.content.ContentResolver;
 import android.content.UriMatcher;
 import android.net.Uri;
 import android.provider.BaseColumns;
@@ -47,7 +48,7 @@ public abstract class Contract {
 	public String getContentType() {
 		final String tableName = this.getTableName();
 		final String contentType =
-				"vnd.android.cursor.dir/vnd.wit." + tableName;
+				ContentResolver.CURSOR_DIR_BASE_TYPE+ "/vnd.wit." + tableName;
 
 		return contentType;
 	}
