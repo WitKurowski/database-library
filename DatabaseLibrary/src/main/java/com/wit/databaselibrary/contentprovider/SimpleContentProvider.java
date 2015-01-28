@@ -77,19 +77,23 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	@Override
 	public String getType( final Uri uri ) {
-		Contract contract = null;
+		String contentType = null;
 
-		for ( final Contract currentContract : this.contracts ) {
+		for ( final Contract contract : this.contracts ) {
 			if ( contract.uriMatchesObject( uri ) ) {
-				contract = currentContract;
+				contentType = contract.getContentType();
+
+				break;
+			} else if ( contract.uriMatchesObjectId( uri ) ) {
+				contentType = contract.getContentItemType();
+
+				break;
 			}
 		}
 
-		if ( contract == null ) {
+		if ( contentType == null ) {
 			throw new IllegalArgumentException( "Unknown URI: " + uri );
 		}
-
-		final String contentType = contract.getContentType();
 
 		return contentType;
 	}
