@@ -28,7 +28,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	public int delete( final T object ) {
 		final Contract contract = this.getContract();
 		final Uri contentUri = contract.getContentUri();
-		final Integer id = object.getId();
+		final Long id = object.getId();
 		final String whereClause = BaseColumns._ID + "=" + id.intValue();
 
 		final int numberOfRowsDelete =
@@ -156,7 +156,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	public T save( final T object ) {
 		final Contract contract = this.getContract();
 		final Uri contentUri = contract.getContentUri();
-		final Integer id = object.getId();
+		final Long id = object.getId();
 		final ContentValues contentValues = this.generateContentValues( object );
 		final T savedObject;
 
