@@ -27,7 +27,7 @@ public abstract class Contract {
 
 	public Contract( final String authority, final List<String> columnNames ) {
 		this.authority = authority;
-		this.columnNames = columnNames;
+		this.columnNames = Collections.unmodifiableList( columnNames );
 
 		this.setupUriMatcher();
 		this.setupProjectionMap();
@@ -43,7 +43,7 @@ public abstract class Contract {
 	}
 
 	public final List<String> getColumnNames() {
-		return Collections.unmodifiableList(this.columnNames);
+		return this.columnNames;
 	}
 
 	public final String getContentType() {
