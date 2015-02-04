@@ -1,5 +1,6 @@
 package com.wit.databaselibrary.contentprovider.contract;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,7 @@ public abstract class Contract {
 	}
 
 	public final List<String> getColumnNames() {
-		return this.columnNames;
+		return Collections.unmodifiableList(this.columnNames);
 	}
 
 	public final String getContentType() {
