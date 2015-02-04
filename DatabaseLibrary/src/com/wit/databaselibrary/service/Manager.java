@@ -13,7 +13,11 @@ import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
 
 public abstract class Manager<T extends DatabaseObject> {
-	protected ContentResolver contentResolver;
+	private final ContentResolver contentResolver;
+
+	protected Manager(final ContentResolver contentResolver) {
+		this.contentResolver = contentResolver;
+	}
 
 	public int delete( final List<T> objects ) {
 		int numberOfRowsDeleted = 0;
