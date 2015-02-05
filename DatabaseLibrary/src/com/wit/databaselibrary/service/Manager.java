@@ -68,14 +68,14 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract T get( final Cursor cursor );
 
-	public T get( final int id ) {
+	public T get( final long id ) {
 		final Contract contract = this.getContract();
 		final Uri contentUri = contract.getContentUri();
 		final List<String> projection = contract.getColumnNames();
 		final String selection = BaseColumns._ID + " = ?";
 		final List<String> selectionArgs = new ArrayList<String>();
 
-		selectionArgs.add( Integer.toString( id ) );
+		selectionArgs.add( Long.toString( id ) );
 
 		final Cursor cursor =
 				this.contentResolver.query(
