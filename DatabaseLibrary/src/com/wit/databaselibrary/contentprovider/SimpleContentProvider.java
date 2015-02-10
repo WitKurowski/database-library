@@ -21,6 +21,13 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	public SimpleContentProvider( final List<Contract> contracts ) {
 		this.contracts = contracts;
+
+		final String authority = this.getAuthority();
+
+		for (final Contract contract : contracts) {
+			contract.setAuthority(authority);
+			contract.setupUriMatcher();
+		}
 	}
 
 	private String adjustSelection( final Uri uri, String selection ) {
@@ -50,6 +57,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		return count;
 	}
+
+	protected abstract String getAuthority();
 
 	protected abstract SQLiteOpenHelper getDatabaseHelper();
 
