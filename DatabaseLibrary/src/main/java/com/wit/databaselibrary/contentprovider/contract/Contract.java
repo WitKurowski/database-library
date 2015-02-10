@@ -11,16 +11,11 @@ import android.net.Uri;
 import android.provider.BaseColumns;
 
 public abstract class Contract {
-	private static int getNextAvailableTableCode() {
-		return Contract.nextAvailableTableCode++;
-	}
-
-	private static int nextAvailableTableCode = 0;
 	private final UriMatcher uriMatcher = new UriMatcher(
 			UriMatcher.NO_MATCH );
 	private final String authority;
-	private final int objectCode = Contract.getNextAvailableTableCode();
-	private final int objectIdCode = Contract.getNextAvailableTableCode();
+	private final int objectCode = 1;
+	private final int objectIdCode = 2;
 	private final Map<String, String> projectionMap =
 			new HashMap<String, String>();
 	private final List<String> columnNames;
