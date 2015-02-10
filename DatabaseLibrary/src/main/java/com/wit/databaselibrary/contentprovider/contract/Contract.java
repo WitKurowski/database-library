@@ -10,21 +10,21 @@ import android.content.UriMatcher;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
+import com.wit.databaselibrary.contentprovider.SimpleContentProvider;
+
 public abstract class Contract {
 	private final UriMatcher uriMatcher = new UriMatcher(
 			UriMatcher.NO_MATCH );
-	private final String authority;
 	private final int objectCode = 1;
 	private final int objectIdCode = 2;
 	private final Map<String, String> projectionMap =
 			new HashMap<String, String>();
 	private final List<String> columnNames;
+	private String authority = null;
 
-	public Contract( final String authority, final List<String> columnNames ) {
-		this.authority = authority;
+	public Contract( final List<String> columnNames ) {
 		this.columnNames = Collections.unmodifiableList( columnNames );
 
-		this.setupUriMatcher();
 		this.setupProjectionMap();
 	}
 
@@ -71,13 +71,17 @@ public abstract class Contract {
 
 	public abstract String getTableName();
 
+	public void setAuthority(final String authority) {
+		this.authority = authority;
+	}
+
 	private void setupProjectionMap() {
 		for ( final String columnName : this.columnNames ) {
 			this.projectionMap.put( columnName, columnName );
 		}
 	}
 
-	private void setupUriMatcher() {
+	public void setupUriMatcher() {
 		final String tableName = this.getTableName();
 
 		this.uriMatcher.addURI(this.authority, tableName, this.objectCode);
