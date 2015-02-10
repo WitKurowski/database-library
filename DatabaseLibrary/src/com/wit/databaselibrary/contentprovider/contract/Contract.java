@@ -15,9 +15,9 @@ public abstract class Contract {
 		return Contract.nextAvailableTableCode++;
 	}
 
-	private static final UriMatcher URI_MATCHER = new UriMatcher(
-			UriMatcher.NO_MATCH );
 	private static int nextAvailableTableCode = 0;
+	private final UriMatcher uriMatcher = new UriMatcher(
+			UriMatcher.NO_MATCH );
 	private final String authority;
 	private final int objectCode = Contract.getNextAvailableTableCode();
 	private final int objectIdCode = Contract.getNextAvailableTableCode();
@@ -85,9 +85,9 @@ public abstract class Contract {
 	private void setupUriMatcher() {
 		final String tableName = this.getTableName();
 
-		Contract.URI_MATCHER.addURI( this.authority, tableName, this.objectCode );
-		Contract.URI_MATCHER.addURI( this.authority, tableName + "/#",
-				this.objectIdCode );
+		this.uriMatcher.addURI(this.authority, tableName, this.objectCode);
+		this.uriMatcher.addURI(this.authority, tableName + "/#",
+				this.objectIdCode);
 	}
 
 	public final boolean uriMatches( final Uri uri ) {
@@ -96,7 +96,7 @@ public abstract class Contract {
 
 	private final boolean uriMatches( final Uri uri,
 			final boolean matchOnObjectCode, final boolean matchOnObjectIdCode ) {
-		final int matchResult = Contract.URI_MATCHER.match( uri );
+		final int matchResult = this.uriMatcher.match( uri );
 		final boolean match;
 
 		if ( ( matchOnObjectCode && ( matchResult == this.objectCode ) )
