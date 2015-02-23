@@ -1,10 +1,8 @@
 package com.wit.databaselibrary.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.BaseColumns;
@@ -12,11 +10,16 @@ import android.provider.BaseColumns;
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public abstract class Manager<T extends DatabaseObject> {
 	private final ContentResolver contentResolver;
+	protected final String packageName;
 
-	protected Manager(final ContentResolver contentResolver) {
-		this.contentResolver = contentResolver;
+	protected Manager( final Context context ) {
+		this.contentResolver = context.getContentResolver();
+		this.packageName = context.getPackageName();
 	}
 
 	public int delete( final List<T> objects ) {
@@ -31,7 +34,8 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public int delete( final T object ) {
 		final Contract contract = this.getContract();
-		final Uri contentUri = contract.getContentUri();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
 		final Long id = object.getId();
 		final String whereClause = BaseColumns._ID + "=" + id.intValue();
 
@@ -45,7 +49,8 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public List<T> get() {
 		final Contract contract = this.getContract();
-		final Uri contentUri = contract.getContentUri();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
 		final List<String> projection = contract.getColumnNames();
 		final Cursor cursor =
 				this.contentResolver.query( contentUri,
@@ -70,7 +75,8 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public T get( final long id ) {
 		final Contract contract = this.getContract();
-		final Uri contentUri = contract.getContentUri();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
 		final List<String> projection = contract.getColumnNames();
 		final String selection = BaseColumns._ID + " = ?";
 		final List<String> selectionArgs = new ArrayList<String>();
@@ -99,7 +105,8 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public List<T> get( final String selection, final List<String> selectionArgs ) {
 		final Contract contract = this.getContract();
-		final Uri contentUri = contract.getContentUri();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
 		final List<String> projection = contract.getColumnNames();
 		final Cursor cursor =
 				this.contentResolver.query(
@@ -143,6 +150,8 @@ public abstract class Manager<T extends DatabaseObject> {
 		return object;
 	}
 
+	protected abstract String getAuthority();
+
 	protected abstract Contract getContract();
 
 	public List<T> save( final List<T> objects ) {
@@ -159,7 +168,8 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public T save( final T object ) {
 		final Contract contract = this.getContract();
-		final Uri contentUri = contract.getContentUri();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
 		final Long id = object.getId();
 		final ContentValues contentValues = this.generateContentValues( object );
 		final T savedObject;

@@ -1,16 +1,14 @@
 package com.wit.databaselibrary.contentprovider.contract;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import android.content.ContentResolver;
 import android.content.UriMatcher;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
-import com.wit.databaselibrary.contentprovider.SimpleContentProvider;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public abstract class Contract {
 	private final UriMatcher uriMatcher = new UriMatcher(
@@ -20,7 +18,7 @@ public abstract class Contract {
 	private final Map<String, String> projectionMap =
 			new HashMap<String, String>();
 	private final List<String> columnNames;
-	private String authority = null;
+	private boolean uriMatcherPrepared = false;
 
 	public Contract( final List<String> columnNames ) {
 		this.columnNames = Collections.unmodifiableList( columnNames );
@@ -57,10 +55,10 @@ public abstract class Contract {
 		return contentType;
 	}
 
-	public Uri getContentUri() {
+	public Uri getContentUri( final String authority ) {
 		final String tableName = this.getTableName();
 		final Uri contentUri =
-				Uri.parse( "content://" + this.authority + "/" + tableName );
+				Uri.parse( "content://" + authority + "/" + tableName );
 
 		return contentUri;
 	}
@@ -71,30 +69,31 @@ public abstract class Contract {
 
 	public abstract String getTableName();
 
-	public void setAuthority(final String authority) {
-		this.authority = authority;
-	}
-
 	private void setupProjectionMap() {
 		for ( final String columnName : this.columnNames ) {
 			this.projectionMap.put( columnName, columnName );
 		}
 	}
 
-	public void setupUriMatcher() {
+	private void prepareUriMatcher( final String authority ) {
 		final String tableName = this.getTableName();
 
-		this.uriMatcher.addURI(this.authority, tableName, this.objectCode);
-		this.uriMatcher.addURI(this.authority, tableName + "/#",
-				this.objectIdCode);
+		this.uriMatcher.addURI( authority, tableName, this.objectCode );
+		this.uriMatcher.addURI( authority, tableName + "/#",
+				this.objectIdCode );
 	}
 
-	public final boolean uriMatches( final Uri uri ) {
-		return this.uriMatches( uri, true, true );
+	public final boolean uriMatches( final Uri uri, final String authority ) {
+		return this.uriMatches( uri, true, true, authority );
 	}
 
-	private final boolean uriMatches( final Uri uri,
-			final boolean matchOnObjectCode, final boolean matchOnObjectIdCode ) {
+	private final synchronized boolean uriMatches( final Uri uri,
+			final boolean matchOnObjectCode, final boolean matchOnObjectIdCode, final String authority ) {
+		if ( !this.uriMatcherPrepared ) {
+			this.prepareUriMatcher( authority );
+			this.uriMatcherPrepared = true;
+		}
+
 		final int matchResult = this.uriMatcher.match( uri );
 		final boolean match;
 
@@ -108,11 +107,11 @@ public abstract class Contract {
 		return match;
 	}
 
-	public final boolean uriMatchesObject( final Uri uri ) {
-		return this.uriMatches( uri, true, false );
+	public final boolean uriMatchesObject( final Uri uri, final String authority ) {
+		return this.uriMatches( uri, true, false, authority );
 	}
 
-	public final boolean uriMatchesObjectId( final Uri uri ) {
-		return this.uriMatches( uri, false, true );
+	public final boolean uriMatchesObjectId( final Uri uri, final String authority ) {
+		return this.uriMatches( uri, false, true, authority );
 	}
 }
