@@ -64,9 +64,9 @@ public abstract class Manager<T extends DatabaseObject> {
 
 				objects.add( object );
 			}
-		}
 
-		cursor.close();
+			cursor.close();
+		}
 
 		return objects;
 	}
@@ -92,13 +92,17 @@ public abstract class Manager<T extends DatabaseObject> {
 						null );
 		final T object;
 
-		if ( ( cursor != null ) && cursor.moveToNext() ) {
-			object = this.get( cursor );
-		} else {
+		if ( cursor == null ) {
 			object = null;
-		}
+		} else {
+			if ( cursor.moveToNext() ) {
+				object = this.get( cursor );
+			} else {
+				object = null;
+			}
 
-		cursor.close();
+			cursor.close();
+		}
 
 		return object;
 	}
@@ -123,9 +127,9 @@ public abstract class Manager<T extends DatabaseObject> {
 
 				objects.add( object );
 			}
-		}
 
-		cursor.close();
+			cursor.close();
+		}
 
 		return objects;
 	}
@@ -139,13 +143,17 @@ public abstract class Manager<T extends DatabaseObject> {
 						null, null, null );
 		final T object;
 
-		if ( ( cursor != null ) && cursor.moveToNext() ) {
-			object = this.get( cursor );
-		} else {
+		if ( cursor == null ) {
 			object = null;
-		}
+		} else {
+			if ( cursor.moveToNext() ) {
+				object = this.get( cursor );
+			} else {
+				object = null;
+			}
 
-		cursor.close();
+			cursor.close();
+		}
 
 		return object;
 	}
