@@ -37,12 +37,12 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 
 		@Override
-		public void onChange(boolean selfChange) {
-			onChange(selfChange, null);
+		public void onChange( boolean selfChange ) {
+			onChange( selfChange, null );
 		}
 
 		@Override
-		public void onChange(boolean selfChange, Uri uri) {
+		public void onChange( boolean selfChange, Uri uri ) {
 			this.onUpdateListener.onUpdate();
 		}
 	}
@@ -54,7 +54,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected Manager( final Context context ) {
 		this.contentResolver = context.getContentResolver();
-		this.handler = new Handler(context.getMainLooper());
+		this.handler = new Handler( context.getMainLooper() );
 		this.packageName = context.getPackageName();
 	}
 
