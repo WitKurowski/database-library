@@ -63,6 +63,14 @@ public abstract class Contract {
 		return contentUri;
 	}
 
+	public Uri getContentUri( final String authority, final long id ) {
+		final String tableName = this.getTableName();
+		final Uri contentUri =
+				Uri.parse( "content://" + authority + "/" + tableName + "/" + id );
+
+		return contentUri;
+	}
+
 	public final Map<String, String> getProjectionMap() {
 		return this.projectionMap;
 	}
