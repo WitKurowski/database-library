@@ -3,22 +3,58 @@ package com.wit.databaselibrary.service;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Handler;
 import android.provider.BaseColumns;
 
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public abstract class Manager<T extends DatabaseObject> {
+	public interface OnUpdateListener {
+		public void onUpdate();
+	}
+
+	protected class InterfacingContentObserver extends ContentObserver {
+		private final Manager.OnUpdateListener onUpdateListener;
+
+		/**
+		 * Creates a content observer.
+		 *
+		 * @param handler The handler to run {@link #onChange} on, or null if none.
+		 */
+		public InterfacingContentObserver( final Handler handler, final Manager.OnUpdateListener onUpdateListener ) {
+			super(handler);
+
+			this.onUpdateListener = onUpdateListener;
+		}
+
+		@Override
+		public void onChange( boolean selfChange ) {
+			onChange( selfChange, null );
+		}
+
+		@Override
+		public void onChange( boolean selfChange, Uri uri ) {
+			this.onUpdateListener.onUpdate();
+		}
+	}
+
 	private final ContentResolver contentResolver;
+	private final Handler handler;
+	private final Map<Manager.OnUpdateListener, ContentObserver> contentObservers = new HashMap<>();
 	protected final String packageName;
 
 	protected Manager( final Context context ) {
 		this.contentResolver = context.getContentResolver();
+		this.handler = new Handler( context.getMainLooper() );
 		this.packageName = context.getPackageName();
 	}
 
@@ -162,6 +198,30 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract Contract getContract();
 
+	public void registerForUpdates( final Manager.OnUpdateListener onUpdateListener ) {
+		this.registerForUpdates( null, onUpdateListener );
+	}
+
+	public void registerForUpdates( final T t, final Manager.OnUpdateListener onUpdateListener ) {
+		final String authority = this.getAuthority();
+		final Contract contract = this.getContract();
+		final Uri uri;
+
+		if ( t == null ) {
+			uri = contract.getContentUri( authority );
+		} else {
+			final Long id = t.getId();
+
+			uri = contract.getContentUri( authority, id);
+		}
+
+		final boolean notifyForDescendants = true;
+		final InterfacingContentObserver interfacingContentObserver = new InterfacingContentObserver( this.handler, onUpdateListener );
+
+		this.contentObservers.put( onUpdateListener, interfacingContentObserver );
+		this.contentResolver.registerContentObserver( uri, notifyForDescendants, interfacingContentObserver );
+	}
+
 	public List<T> save( final List<T> objects ) {
 		final List<T> savedObjects = new ArrayList<T>();
 
@@ -197,5 +257,12 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 
 		return savedObject;
+	}
+
+	public void unregisterForUpdates( final Manager.OnUpdateListener onUpdateListener ) {
+		final ContentObserver contentObserver = this.contentObservers.get( onUpdateListener );
+
+		this.contentResolver.unregisterContentObserver( contentObserver );
+		this.contentObservers.remove( onUpdateListener );
 	}
 }
