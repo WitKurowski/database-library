@@ -198,6 +198,39 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract Contract getContract();
 
+	private T performSave( final T object ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final ContentValues contentValues = this.generateContentValues( object );
+		final Uri uri =
+				this.contentResolver.insert( contentUri, contentValues );
+
+		final T savedObject = this.get( uri );
+
+		return savedObject;
+	}
+
+	private T performUpdate( final T object ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final Long id = object.getId();
+		final ContentValues contentValues = this.generateContentValues( object );
+		final String whereClause = BaseColumns._ID + "=" + id.intValue();
+		final int i = this.contentResolver.update( contentUri, contentValues,
+				whereClause, null );
+		final T savedObject;
+
+		if (i == 1) {
+			savedObject = object;
+		} else {
+			savedObject = null;
+		}
+
+		return savedObject;
+	}
+
 	public void registerForUpdates( final Manager.OnUpdateListener onUpdateListener ) {
 		this.registerForUpdates( null, onUpdateListener );
 	}
@@ -237,28 +270,23 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public T save( final T object ) {
-		final Contract contract = this.getContract();
-		final String authority = this.getAuthority();
-		final Uri contentUri = contract.getContentUri( authority );
 		final Long id = object.getId();
-		final ContentValues contentValues = this.generateContentValues( object );
+		final boolean managedRemotely = object.isManagedRemotely();
 		final T savedObject;
 
-		if ( id == null ) {
-			final Uri uri =
-					this.contentResolver.insert( contentUri, contentValues );
+		if ( managedRemotely ) {
+			final T existingObject = this.get( id );
 
-			savedObject = this.get( uri );
-		} else {
-			final String whereClause = BaseColumns._ID + "=" + id.intValue();
-
-			final int i = this.contentResolver.update( contentUri, contentValues,
-					whereClause, null );
-
-			if ( i == 1 ) {
-				savedObject = object;
+			if ( existingObject == null ) {
+				savedObject = this.performSave( object );
 			} else {
-				savedObject = null;
+				savedObject = this.performUpdate( object );
+			}
+		} else {
+			if ( id == null ) {
+				savedObject = this.performSave( object );
+			} else {
+				savedObject = this.performUpdate( object );
 			}
 		}
 
