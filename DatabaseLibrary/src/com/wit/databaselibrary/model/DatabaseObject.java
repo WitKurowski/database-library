@@ -10,4 +10,13 @@ public class DatabaseObject {
 	public Long getId() {
 		return this.id;
 	}
+
+	/**
+	 * Returns whether this object and its ID are managed remotely.
+	 *
+	 * @return Whether this object and its ID are managed remotely.
+	 */
+	public boolean isManagedRemotely() {
+		return false;
+	}
 }
