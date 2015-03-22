@@ -228,7 +228,9 @@ public abstract class Manager<T extends DatabaseObject> {
 		for ( final T object : objects ) {
 			final T savedObject = this.save( object );
 
-			savedObjects.add( savedObject );
+			if ( savedObject != null ) {
+				savedObjects.add( savedObject );
+			}
 		}
 
 		return savedObjects;
@@ -250,10 +252,14 @@ public abstract class Manager<T extends DatabaseObject> {
 		} else {
 			final String whereClause = BaseColumns._ID + "=" + id.intValue();
 
-			this.contentResolver.update( contentUri, contentValues,
+			final int i = this.contentResolver.update( contentUri, contentValues,
 					whereClause, null );
 
-			savedObject = object;
+			if ( i == 1 ) {
+				savedObject = object;
+			} else {
+				savedObject = null;
+			}
 		}
 
 		return savedObject;
