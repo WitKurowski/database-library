@@ -148,20 +148,28 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public List<T> get( final String selection, final List<String> selectionArgs ) {
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, null );
-
-		return objects;
-	}
-
-	public List<T> get( final String selection, final List<String> selectionArgs,
-			final Integer limit ) {
-		final List<Pair<String, Order>> orderBys = Collections.emptyList();
+		final Integer limit = null;
 		final List<T> objects = this.get( selection, selectionArgs, orderBys, limit );
 
 		return objects;
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
+			final int limit ) {
+		final List<Pair<String, Order>> orderBys = Collections.emptyList();
+		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
+
+		return objects;
+	}
+
+	public List<T> get( final String selection, final List<String> selectionArgs,
+			final List<Pair<String, Order>> orderBys, final int limit ) {
+		final List<T> objects = this.get(selection, selectionArgs, orderBys, (Integer) limit);
+
+		return objects;
+	}
+
+	private List<T> get( final String selection, final List<String> selectionArgs,
 			final List<Pair<String, Order>> orderBys, final Integer limit ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
