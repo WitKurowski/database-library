@@ -8,11 +8,14 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
 import android.provider.BaseColumns;
+import android.util.Pair;
 
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
+import com.wit.databaselibrary.model.Order;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -144,17 +147,53 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs ) {
+		final List<Pair<String, Order>> orderBys = Collections.emptyList();
+		final List<T> objects = this.get( selection, selectionArgs, orderBys, null );
+
+		return objects;
+	}
+
+	public List<T> get( final String selection, final List<String> selectionArgs,
+			final Integer limit ) {
+		final List<Pair<String, Order>> orderBys = Collections.emptyList();
+		final List<T> objects = this.get( selection, selectionArgs, orderBys, limit );
+
+		return objects;
+	}
+
+	public List<T> get( final String selection, final List<String> selectionArgs,
+			final List<Pair<String, Order>> orderBys, final Integer limit ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
 		final List<String> projection = contract.getColumnNames();
+		StringBuilder sortOrder = new StringBuilder();
+
+		if ( orderBys.isEmpty() ) {
+			sortOrder.append( BaseColumns._ID );
+		} else {
+			for ( final Pair<String, Order> orderBy : orderBys ) {
+				if ( sortOrder.length() != 0 ) {
+					sortOrder.append( ", " );
+				}
+
+				sortOrder.append( orderBy.first );
+				sortOrder.append( " " );
+				sortOrder.append( orderBy.second.getKeyword() );
+			}
+		}
+
+		if ( limit != null ) {
+			sortOrder.append( " LIMIT " + limit );
+		}
+
 		final Cursor cursor =
 				this.contentResolver.query(
 						contentUri,
 						projection.toArray( new String[ projection.size() ] ),
 						selection,
 						selectionArgs.toArray( new String[ selectionArgs.size() ] ),
-						null );
+						sortOrder.toString() );
 		final List<T> objects = new ArrayList<T>();
 
 		if ( cursor != null ) {
