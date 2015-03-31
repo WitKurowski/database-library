@@ -1,8 +1,13 @@
 package com.wit.databaselibrary.contentprovider;
 
 import android.content.ContentProvider;
+import android.content.ContentProviderOperation;
+import android.content.ContentProviderResult;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
@@ -13,8 +18,11 @@ import android.provider.BaseColumns;
 
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	private final List<Contract> contracts;
@@ -36,6 +44,41 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	}
 
 	@Override
+	public ContentProviderResult[] applyBatch( final ArrayList<ContentProviderOperation> contentProviderOperations )
+			throws OperationApplicationException {
+		final List<ContentProviderResult> contentProviderResults = new ArrayList<>();
+		final Set<Uri> uris = new HashSet<>();
+
+		for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
+			final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
+			final Uri newObjectUri = contentProviderResult.uri;
+
+			if ( newObjectUri == null ) {
+				final int count = contentProviderResult.count;
+
+				if ( count >= 1 ) {
+					final Uri uri = contentProviderOperation.getUri();
+
+					uris.add( uri );
+				}
+			} else {
+				uris.add( newObjectUri );
+			}
+
+			contentProviderResults.add( contentProviderResult );
+		}
+
+		final Context context = this.getContext();
+		final ContentResolver contentResolver = context.getContentResolver();
+
+		for ( final Uri uri : uris ) {
+			contentResolver.notifyChange( uri, null );
+		}
+
+		return contentProviderResults.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
+	}
+
+	@Override
 	public int delete( final Uri uri, final String selection,
 			final String[] selectionArgs ) {
 		final String authority = this.getAuthority();
@@ -46,8 +89,10 @@ public abstract class SimpleContentProvider extends ContentProvider {
 				databaseHelper.getWritableDatabase();
 		final int count =
 				sqLiteDatabase.delete( tableName, newSelection, selectionArgs );
+		final Context context = this.getContext();
+		final ContentResolver contentResolver = context.getContentResolver();
 
-		this.getContext().getContentResolver().notifyChange( uri, null );
+		contentResolver.notifyChange( uri, null );
 
 		return count;
 	}
@@ -141,9 +186,10 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		if ( rowId > 0 ) {
 			final Uri contentUriWithAppendedId =
 					ContentUris.withAppendedId( contentUri, rowId );
+			final Context context = this.getContext();
+			final ContentResolver contentResolver = context.getContentResolver();
 
-			this.getContext().getContentResolver().notifyChange(
-					contentUriWithAppendedId, null );
+			contentResolver.notifyChange( contentUriWithAppendedId, null );
 
 			return contentUriWithAppendedId;
 		} else {
@@ -202,12 +248,13 @@ public abstract class SimpleContentProvider extends ContentProvider {
 				databaseHelper.getWritableDatabase();
 		final String authority = this.getAuthority();
 		final String tableName = this.getTableName( uri, authority );
-
 		final int count =
 				sqLiteDatabase.update( tableName, contentValues, selection,
 						selectionArgs );
+		final Context context = this.getContext();
+		final ContentResolver contentResolver = context.getContentResolver();
 
-		this.getContext().getContentResolver().notifyChange( uri, null );
+		contentResolver.notifyChange( uri, null );
 
 		return count;
 	}
