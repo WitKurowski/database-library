@@ -1,13 +1,18 @@
 package com.wit.databaselibrary.service;
 
+import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.OperationApplicationException;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.RemoteException;
 import android.provider.BaseColumns;
+import android.util.Log;
 import android.util.Pair;
 
 import com.wit.databaselibrary.contentprovider.contract.Contract;
@@ -19,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class Manager<T extends DatabaseObject> {
 	public interface OnUpdateListener {
@@ -34,7 +40,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		 * @param handler The handler to run {@link #onChange} on, or null if none.
 		 */
 		public InterfacingContentObserver( final Handler handler, final Manager.OnUpdateListener onUpdateListener ) {
-			super(handler);
+			super( handler );
 
 			this.onUpdateListener = onUpdateListener;
 		}
@@ -59,6 +65,41 @@ public abstract class Manager<T extends DatabaseObject> {
 		this.contentResolver = context.getContentResolver();
 		this.handler = new Handler( context.getMainLooper() );
 		this.packageName = context.getPackageName();
+	}
+
+	/**
+	 * Adds, updates, and deletes the specified objects.
+	 *
+	 * @param objectsToAdd The objects that need to be added.
+	 * @param objectsToUpdate The objects that need to be updated.
+	 * @param objectsToDelete The objects that need to be deleted.
+	 * @throws OperationApplicationException An add, update, or delete operation failed.
+	 */
+	private void apply( final List<T> objectsToAdd, final List<T> objectsToUpdate, final List<T> objectsToDelete )
+			throws OperationApplicationException {
+		final String authority = this.getAuthority();
+		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+		final List<ContentProviderOperation> addedObjectContentProviderOperations =
+				this.processObjectsToAdd( objectsToAdd );
+
+		contentProviderOperations.addAll( addedObjectContentProviderOperations );
+
+		final List<ContentProviderOperation> modifiedObjectContentProviderOperations =
+				this.processObjectsToUpdate( objectsToUpdate );
+
+		contentProviderOperations.addAll( modifiedObjectContentProviderOperations );
+
+		final List<ContentProviderOperation> deletedObjectContentProviderOperations =
+				this.processObjectsToDelete( objectsToDelete );
+
+		contentProviderOperations.addAll( deletedObjectContentProviderOperations );
+
+		try {
+			this.contentResolver.applyBatch( authority, contentProviderOperations );
+		} catch ( final RemoteException remoteException ) {
+			Log.e( Manager.class.getSimpleName(),
+					"An error happened while attempting to communicate with a remote provider.", remoteException );
+		}
 	}
 
 	public int delete( final List<T> objects ) {
@@ -164,7 +205,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
 			final List<Pair<String, Order>> orderBys, final int limit ) {
-		final List<T> objects = this.get(selection, selectionArgs, orderBys, (Integer) limit);
+		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
 
 		return objects;
 	}
@@ -269,13 +310,95 @@ public abstract class Manager<T extends DatabaseObject> {
 				whereClause, null );
 		final T savedObject;
 
-		if (i == 1) {
+		if ( i == 1 ) {
 			savedObject = object;
 		} else {
 			savedObject = null;
 		}
 
 		return savedObject;
+	}
+
+	/**
+	 * Creates an "insert" {@link ContentProviderOperation} for each of the given objects.
+	 *
+	 * @param objectsToAdd The objects to create {@link ContentProviderOperation} for.
+	 * @return The created {@link ContentProviderOperation}s.
+	 */
+	private List<ContentProviderOperation> processObjectsToAdd( final List<T> objectsToAdd ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+
+		for ( final T objectToAdd : objectsToAdd ) {
+			final ContentProviderOperation.Builder builder = ContentProviderOperation.newInsert( contentUri );
+			final ContentValues contentValues = this.generateContentValues( objectToAdd );
+
+			builder.withValues( contentValues );
+
+			final ContentProviderOperation objectToAddContentProviderOperation = builder.build();
+
+			contentProviderOperations.add( objectToAddContentProviderOperation );
+		}
+
+		return contentProviderOperations;
+	}
+
+	/**
+	 * Creates a "delete" {@link ContentProviderOperation} for each of the given objects.
+	 *
+	 * @param objectsToDelete The objects to create {@link ContentProviderOperation} for.
+	 * @return The created {@link ContentProviderOperation}s.
+	 */
+	private List<ContentProviderOperation> processObjectsToDelete( final List<T> objectsToDelete ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+
+		for ( final T objectToDelete : objectsToDelete ) {
+			final Long id = objectToDelete.getId();
+			final Uri modifiedObjectUri = ContentUris.withAppendedId( contentUri, id );
+			final ContentProviderOperation.Builder builder = ContentProviderOperation.newDelete( modifiedObjectUri );
+
+			builder.withSelection( "", null );
+
+			final ContentProviderOperation objectToDeleteContentProviderOperation = builder.build();
+
+			contentProviderOperations.add( objectToDeleteContentProviderOperation );
+		}
+
+		return contentProviderOperations;
+	}
+
+	/**
+	 * Creates an "update" {@link ContentProviderOperation} for each of the given objects.
+	 *
+	 * @param objectsToUpdate The objects to create {@link ContentProviderOperation} for.
+	 * @return The created {@link ContentProviderOperation}s.
+	 */
+	private List<ContentProviderOperation> processObjectsToUpdate( final List<T> objectsToUpdate ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+
+		for ( final T objectToUpdate : objectsToUpdate ) {
+			final Long id = objectToUpdate.getId();
+			final Uri modifiedObjectUri = ContentUris.withAppendedId( contentUri, id );
+			final ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate( modifiedObjectUri );
+			final ContentValues contentValues = this.generateContentValues( objectToUpdate );
+
+			builder.withSelection( BaseColumns._ID + " = ?", new String[]{ id.toString() } );
+			builder.withValues( contentValues );
+
+			final ContentProviderOperation objectToUpdateContentProviderOperation = builder.build();
+
+			contentProviderOperations.add( objectToUpdateContentProviderOperation );
+		}
+
+		return contentProviderOperations;
 	}
 
 	public void registerForUpdates( final Manager.OnUpdateListener onUpdateListener ) {
@@ -292,14 +415,53 @@ public abstract class Manager<T extends DatabaseObject> {
 		} else {
 			final Long id = t.getId();
 
-			uri = contract.getContentUri( authority, id);
+			uri = contract.getContentUri( authority, id );
 		}
 
 		final boolean notifyForDescendants = true;
-		final InterfacingContentObserver interfacingContentObserver = new InterfacingContentObserver( this.handler, onUpdateListener );
+		final InterfacingContentObserver interfacingContentObserver =
+				new InterfacingContentObserver( this.handler, onUpdateListener );
 
 		this.contentObservers.put( onUpdateListener, interfacingContentObserver );
 		this.contentResolver.registerContentObserver( uri, notifyForDescendants, interfacingContentObserver );
+	}
+
+	/**
+	 * Replaces the existing collection of saved database objects with the given collection.
+	 *
+	 * @param replacementObjects The newer collection of database objects that should overwrite the existing collection.
+	 * @throws OperationApplicationException One of the replacement operations (either add, update, or delete) failed.
+	 */
+	public void replace( final List<T> replacementObjects ) throws OperationApplicationException {
+		final List<T> oldObjects = this.get();
+		final Map<Long, T> oldObjectIdsToSources = new HashMap<>();
+
+		for ( final T oldObject : oldObjects ) {
+			final Long oldObjectId = oldObject.getId();
+
+			oldObjectIdsToSources.put( oldObjectId, oldObject );
+		}
+
+		final Set<Long> oldObjectIds = oldObjectIdsToSources.keySet();
+		final List<T> objectsToAdd = new ArrayList<>();
+		final List<T> objectsToUpdate = new ArrayList<>();
+		final List<T> objectsToDelete = new ArrayList<>();
+
+		for ( final T replacementObject : replacementObjects ) {
+			final Long updatedObjectId = replacementObject.getId();
+
+			if ( oldObjectIds.contains( updatedObjectId ) ) {
+				objectsToUpdate.add( replacementObject );
+				oldObjectIdsToSources.remove( updatedObjectId );
+				oldObjectIds.remove( updatedObjectId );
+			} else {
+				objectsToAdd.add( replacementObject );
+			}
+		}
+
+		objectsToDelete.addAll( oldObjectIdsToSources.values() );
+
+		this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
 	}
 
 	public List<T> save( final List<T> objects ) {
