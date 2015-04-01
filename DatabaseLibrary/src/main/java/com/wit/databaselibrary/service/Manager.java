@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class Manager<T extends DatabaseObject> {
 	public interface OnUpdateListener {
@@ -442,18 +441,22 @@ public abstract class Manager<T extends DatabaseObject> {
 			oldObjectIdsToSources.put( oldObjectId, oldObject );
 		}
 
-		final Set<Long> oldObjectIds = oldObjectIdsToSources.keySet();
 		final List<T> objectsToAdd = new ArrayList<>();
 		final List<T> objectsToUpdate = new ArrayList<>();
 		final List<T> objectsToDelete = new ArrayList<>();
 
 		for ( final T replacementObject : replacementObjects ) {
 			final Long updatedObjectId = replacementObject.getId();
+			final boolean objectAlreadyExisted = oldObjectIdsToSources.containsKey( updatedObjectId );
 
-			if ( oldObjectIds.contains( updatedObjectId ) ) {
-				objectsToUpdate.add( replacementObject );
-				oldObjectIdsToSources.remove( updatedObjectId );
-				oldObjectIds.remove( updatedObjectId );
+			if ( objectAlreadyExisted ) {
+				final Long replacementObjectVersion = replacementObject.getVersion();
+				final T oldObject = oldObjectIdsToSources.remove( updatedObjectId );
+				final Long oldObjectVersion = oldObject.getVersion();
+
+				if ( replacementObjectVersion > oldObjectVersion ) {
+					objectsToUpdate.add( replacementObject );
+				}
 			} else {
 				objectsToAdd.add( replacementObject );
 			}
