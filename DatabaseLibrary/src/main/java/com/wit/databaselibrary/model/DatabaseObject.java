@@ -1,14 +1,52 @@
 package com.wit.databaselibrary.model;
 
 public class DatabaseObject {
+	/**
+	 * The unique identifier for this object.
+	 */
 	private final Long id;
 
+	/**
+	 * The version of this object, which is incremented every single time the object is modified.
+	 */
+	private final Long version;
+
+	/**
+	 * Creates a new {@link DatabaseObject}.
+	 *
+	 * @param id The unique identifier for this object.
+	 */
 	public DatabaseObject( final Long id ) {
-		this.id = id;
+		this(id, 1L);
 	}
 
+	/**
+	 * Creates a new {@link DatabaseObject}.
+	 *
+	 * @param id The unique identifier for this object.
+	 * @param version The version of this object, which is incremented every single time the object is modified.
+	 */
+	public DatabaseObject( final Long id, final Long version ) {
+		this.id = id;
+		this.version = version;
+	}
+
+	/**
+	 * Returns the unique identifier for this object.
+	 *
+	 * @return The unique identifier for this object.
+	 */
 	public Long getId() {
 		return this.id;
+	}
+
+	/**
+	 * Returns the version of this object, which is incremented every single time the object is modified.
+	 *
+	 * @return The version of this object, which is incremented every single time the object is modified.
+	 */
+	public Long getVersion() {
+		return this.version;
 	}
 
 	/**
