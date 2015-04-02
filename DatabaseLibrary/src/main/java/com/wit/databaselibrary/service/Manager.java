@@ -15,9 +15,12 @@ import android.provider.BaseColumns;
 import android.util.Log;
 import android.util.Pair;
 
+import com.wit.databaselibrary.contentprovider.StorageModificationException;
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
 import com.wit.databaselibrary.model.Order;
+import com.wit.databaselibrary.model.id.IdWrapper;
+import com.wit.databaselibrary.model.id.SimpleIdWrapper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,10 +75,10 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @param objectsToAdd The objects that need to be added.
 	 * @param objectsToUpdate The objects that need to be updated.
 	 * @param objectsToDelete The objects that need to be deleted.
-	 * @throws OperationApplicationException An add, update, or delete operation failed.
+	 * @throws StorageModificationException An add, update, or delete operation failed.
 	 */
 	private void apply( final List<T> objectsToAdd, final List<T> objectsToUpdate, final List<T> objectsToDelete )
-			throws OperationApplicationException {
+			throws StorageModificationException {
 		final String authority = this.getAuthority();
 		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
 		final List<ContentProviderOperation> addedObjectContentProviderOperations =
@@ -98,6 +101,9 @@ public abstract class Manager<T extends DatabaseObject> {
 		} catch ( final RemoteException remoteException ) {
 			Log.e( Manager.class.getSimpleName(),
 					"An error happened while attempting to communicate with a remote provider.", remoteException );
+		} catch ( OperationApplicationException operationApplicationException ) {
+			throw new StorageModificationException( "An add, update, or delete operation failed to be applied.",
+					operationApplicationException );
 		}
 	}
 
@@ -285,6 +291,12 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract Contract getContract();
 
+	protected IdWrapper getId( final T object ) {
+		final IdWrapper idWrapper = new SimpleIdWrapper( object.getId() );
+
+		return idWrapper;
+	}
+
 	private T performSave( final T object ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
@@ -429,16 +441,16 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite the existing collection.
-	 * @throws OperationApplicationException One of the replacement operations (either add, update, or delete) failed.
+	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public void replace( final List<T> replacementObjects ) throws OperationApplicationException {
+	public void replace( final List<T> replacementObjects ) throws StorageModificationException {
 		final List<T> oldObjects = this.get();
-		final Map<Long, T> oldObjectIdsToSources = new HashMap<>();
+		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<>();
 
 		for ( final T oldObject : oldObjects ) {
-			final Long oldObjectId = oldObject.getId();
+			final IdWrapper oldObjectIdWrapper = this.getId( oldObject );
 
-			oldObjectIdsToSources.put( oldObjectId, oldObject );
+			oldObjectIdsToSources.put( oldObjectIdWrapper, oldObject );
 		}
 
 		final List<T> objectsToAdd = new ArrayList<>();
@@ -446,12 +458,12 @@ public abstract class Manager<T extends DatabaseObject> {
 		final List<T> objectsToDelete = new ArrayList<>();
 
 		for ( final T replacementObject : replacementObjects ) {
-			final Long updatedObjectId = replacementObject.getId();
-			final boolean objectAlreadyExisted = oldObjectIdsToSources.containsKey( updatedObjectId );
+			final IdWrapper replacementObjectIdWrapper = this.getId( replacementObject );
+			final boolean objectAlreadyExisted = oldObjectIdsToSources.containsKey( replacementObjectIdWrapper );
 
 			if ( objectAlreadyExisted ) {
 				final Long replacementObjectVersion = replacementObject.getVersion();
-				final T oldObject = oldObjectIdsToSources.remove( updatedObjectId );
+				final T oldObject = oldObjectIdsToSources.remove( replacementObjectIdWrapper );
 				final Long oldObjectVersion = oldObject.getVersion();
 
 				if ( replacementObjectVersion > oldObjectVersion ) {
