@@ -49,7 +49,6 @@ public abstract class Manager<T extends DatabaseObject> {
 			onChange( selfChange, null );
 		}
 
-		@Override
 		public void onChange( boolean selfChange, Uri uri ) {
 			this.onUpdateListener.onUpdate();
 		}
@@ -57,7 +56,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	private final ContentResolver contentResolver;
 	private final Handler handler;
-	private final Map<Manager.OnUpdateListener, ContentObserver> contentObservers = new HashMap<>();
+	private final Map<Manager.OnUpdateListener, ContentObserver> contentObservers = new HashMap<Manager.OnUpdateListener, ContentObserver>();
 	protected final String packageName;
 
 	protected Manager( final Context context ) {
