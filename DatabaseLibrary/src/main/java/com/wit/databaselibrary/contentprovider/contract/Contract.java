@@ -11,6 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Contract {
+	public static abstract class Columns implements BaseColumns {
+		/**
+		 * The version of an object.
+		 */
+		public static final String VERSION = "version";
+	}
+
 	private final UriMatcher uriMatcher = new UriMatcher(
 			UriMatcher.NO_MATCH );
 	private final int objectCode = 1;
