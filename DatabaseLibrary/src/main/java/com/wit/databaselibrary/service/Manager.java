@@ -79,7 +79,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	private void apply( final List<T> objectsToAdd, final List<T> objectsToUpdate, final List<T> objectsToDelete )
 			throws StorageModificationException {
 		final String authority = this.getAuthority();
-		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
 		final List<ContentProviderOperation> addedObjectContentProviderOperations =
 				this.processObjectsToAdd( objectsToAdd );
 
@@ -339,7 +339,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
-		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
 
 		for ( final T objectToAdd : objectsToAdd ) {
 			final ContentProviderOperation.Builder builder = ContentProviderOperation.newInsert( contentUri );
@@ -365,7 +365,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
-		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
 
 		for ( final T objectToDelete : objectsToDelete ) {
 			final Long id = objectToDelete.getId();
@@ -392,7 +392,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
-		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<>();
+		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
 
 		for ( final T objectToUpdate : objectsToUpdate ) {
 			final Long id = objectToUpdate.getId();
@@ -467,7 +467,7 @@ public abstract class Manager<T extends DatabaseObject> {
 			oldObjects = this.get( selection, selectionArgs );
 		}
 
-		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<>();
+		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<IdWrapper, T>();
 
 		for ( final T oldObject : oldObjects ) {
 			final IdWrapper oldObjectIdWrapper = this.getId( oldObject );
@@ -475,9 +475,9 @@ public abstract class Manager<T extends DatabaseObject> {
 			oldObjectIdsToSources.put( oldObjectIdWrapper, oldObject );
 		}
 
-		final List<T> objectsToAdd = new ArrayList<>();
-		final List<T> objectsToUpdate = new ArrayList<>();
-		final List<T> objectsToDelete = new ArrayList<>();
+		final List<T> objectsToAdd = new ArrayList<T>();
+		final List<T> objectsToUpdate = new ArrayList<T>();
+		final List<T> objectsToDelete = new ArrayList<T>();
 
 		for ( final T replacementObject : replacementObjects ) {
 			final IdWrapper replacementObjectIdWrapper = this.getId( replacementObject );
