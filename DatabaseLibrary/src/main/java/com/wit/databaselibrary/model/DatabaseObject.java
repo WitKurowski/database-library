@@ -7,7 +7,7 @@ public class DatabaseObject {
 	private final Long id;
 
 	/**
-	 * The version of this object, which is incremented every single time the object is modified.
+	 * The numerical value used to determine which instance of an object is most up-to-date.
 	 */
 	private final Long version;
 
@@ -24,7 +24,7 @@ public class DatabaseObject {
 	 * Creates a new {@link DatabaseObject}.
 	 *
 	 * @param id The unique identifier for this object.
-	 * @param version The version of this object, which is incremented every single time the object is modified.
+	 * @param version The numerical value used to determine which instance of an object is most up-to-date.
 	 */
 	public DatabaseObject( final Long id, final Long version ) {
 		this.id = id;
