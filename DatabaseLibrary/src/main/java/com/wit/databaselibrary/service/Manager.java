@@ -443,7 +443,30 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
 	public void replace( final List<T> replacementObjects ) throws StorageModificationException {
-		final List<T> oldObjects = this.get();
+		final String selection = null;
+		final List<String> selectionArgs = Collections.emptyList();
+
+		this.replace( replacementObjects, selection, selectionArgs );
+	}
+
+	/**
+	 * Replaces the existing collection of saved database objects with the given collection.
+	 *
+	 * @param replacementObjects The newer collection of database objects that should overwrite the existing collection.
+	 * @param selection A filter declaring which rows to return, formatted as an SQL WHERE clause (excluding the WHERE itself).
+	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in the order that they appear in the selection. The values will be bound as Strings.
+	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
+	 */
+	public void replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
+			throws StorageModificationException {
+		final List<T> oldObjects;
+
+		if ( selection == null ) {
+			oldObjects = this.get();
+		} else {
+			oldObjects = this.get( selection, selectionArgs );
+		}
+
 		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<>();
 
 		for ( final T oldObject : oldObjects ) {
