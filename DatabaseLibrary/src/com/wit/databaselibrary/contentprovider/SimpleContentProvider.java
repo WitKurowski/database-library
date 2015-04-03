@@ -117,7 +117,9 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		}
 
 		if ( tableName == null ) {
-			throw new IllegalArgumentException( "Unknown URI: " + uri );
+			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
+					"\". Are you sure you added it to the list of Contracts passed into the " +
+					SimpleContentProvider.class.getSimpleName() + " class?" );
 		}
 
 		return tableName;
@@ -141,7 +143,9 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		}
 
 		if ( contentType == null ) {
-			throw new IllegalArgumentException( "Unknown URI: " + uri );
+			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
+					"\". Are you sure you added it to the list of Contracts passed into the " +
+					SimpleContentProvider.class.getSimpleName() + " class?" );
 		}
 
 		return contentType;
@@ -159,7 +163,9 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		}
 
 		if ( contract == null ) {
-			throw new IllegalArgumentException( "Unknown URI: " + uri );
+			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
+					"\". Are you sure you added it to the list of Contracts passed into the " +
+					SimpleContentProvider.class.getSimpleName() + " class?" );
 		}
 
 		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
@@ -211,7 +217,9 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		}
 
 		if ( projectionMap == null ) {
-			throw new IllegalArgumentException( "Unknown URI: " + uri );
+			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
+					"\". Are you sure you added it to the list of Contracts passed into the " +
+					SimpleContentProvider.class.getSimpleName() + " class?" );
 		}
 
 		String newSelection;
