@@ -46,8 +46,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	@Override
 	public ContentProviderResult[] applyBatch( final ArrayList<ContentProviderOperation> contentProviderOperations )
 			throws OperationApplicationException {
-		final List<ContentProviderResult> contentProviderResults = new ArrayList<>();
-		final Set<Uri> uris = new HashSet<>();
+		final List<ContentProviderResult> contentProviderResults = new ArrayList<ContentProviderResult>();
+		final Set<Uri> uris = new HashSet<Uri>();
 
 		for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
 			final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
