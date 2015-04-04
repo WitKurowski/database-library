@@ -59,7 +59,8 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	private final ContentResolver contentResolver;
 	private final Handler handler;
-	private final Map<Manager.OnUpdateListener, ContentObserver> contentObservers = new HashMap<Manager.OnUpdateListener, ContentObserver>();
+	private final Map<Manager.OnUpdateListener, ContentObserver> contentObservers =
+			new HashMap<Manager.OnUpdateListener, ContentObserver>();
 	protected final String packageName;
 
 	protected Manager( final Context context ) {
@@ -106,6 +107,12 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 	}
 
+	/**
+	 * Deletes the given {@link DatabaseObject}s.
+	 *
+	 * @param objects The {@link DatabaseObject}s to delete.
+	 * @return The number of {@link DatabaseObject}s that were deleted.
+	 */
 	public int delete( final List<T> objects ) {
 		int numberOfRowsDeleted = 0;
 
@@ -116,15 +123,79 @@ public abstract class Manager<T extends DatabaseObject> {
 		return numberOfRowsDeleted;
 	}
 
+	/**
+	 * Deletes the given {@link DatabaseObject}.
+	 *
+	 * @param object The {@link DatabaseObject} to delete.
+	 * @return 1 if the specified {@link DatabaseObject} was deleted, or 0 if it was not deleted.
+	 */
 	public int delete( final T object ) {
+		final long id = object.getId();
+		final String whereClause = BaseColumns._ID + " = ?";
+		final List<String> whereArgs = Collections.singletonList( String.valueOf( id ) );
+		final int numberOfRowsDelete = this.delete( id, whereClause, whereArgs );
+
+		return numberOfRowsDelete;
+	}
+
+	/**
+	 * Deletes any {@link DatabaseObject} that satisfy the given where clause and arguments.
+	 *
+	 * @param whereClause The where clause to use to narrow down the {@link DatabaseObject}s to delete.
+	 * @param whereArgs The values to replace the question marks with in the where clause.
+	 * @return The number of {@link DatabaseObject}s that were deleted.
+	 */
+	public int delete( final String whereClause, final List<String> whereArgs ) {
+		final Long id = null;
+		final int numberOfRowsDeleted = this.delete( id, whereClause, whereArgs );
+
+		return numberOfRowsDeleted;
+	}
+
+	/**
+	 * Deletes the given {@link DatabaseObject} if the current saved state of it satisfies the given where clause and
+	 * arguments.  Note that the object ID matching condition will be added to the where clause and argument list.
+	 *
+	 * @param object The {@link DatabaseObject} to delete, assuming it satisfies the given where clause and arguments.
+	 * @param whereClause The where clause to use to determine whether the {@link DatabaseObject} should be deleted.
+	 * @param whereArgs The values to replace the question marks with in the where clause.
+	 * @return 1 if the specified {@link DatabaseObject} was deleted, or 0 if it was not deleted.
+	 */
+	public int delete( final T object, final String whereClause, final List<String> whereArgs ) {
+		final Long id = object.getId();
+		final String narrowedWhereClause = BaseColumns._ID + " = ? AND " + whereClause;
+		final List<String> narrowedWhereArgs = new ArrayList<String>();
+
+		narrowedWhereArgs.add( String.valueOf( id ) );
+		narrowedWhereArgs.addAll( whereArgs );
+
+		final int numberOfRowsDeleted = this.delete( id, narrowedWhereClause, narrowedWhereArgs );
+
+		return numberOfRowsDeleted;
+	}
+
+	/**
+	 * Deletes any {@link DatabaseObject} that satisfy the given where clause and arguments using the given ID as part
+	 * of the content URI.
+	 *
+	 * @param id The ID to use as part of the content URI associated with the delete, if any.
+	 * @param whereClause The where clause to use to narrow down the {@link DatabaseObject}s to delete.
+	 * @param whereArgs The values to replace the question marks with in the where clause.
+	 * @return The number of {@link DatabaseObject}s that were deleted.
+	 */
+	private int delete( final Long id, final String whereClause, final List<String> whereArgs ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
-		final Uri contentUri = contract.getContentUri( authority );
-		final Long id = object.getId();
-		final String whereClause = BaseColumns._ID + "=" + id.intValue();
+		final Uri contentUri;
 
-		final int numberOfRowsDelete =
-				this.contentResolver.delete( contentUri, whereClause, null );
+		if ( id == null ) {
+			contentUri = contract.getContentUri( authority );
+		} else {
+			contentUri = contract.getContentUri( authority, id );
+		}
+
+		final int numberOfRowsDelete = this.contentResolver
+				.delete( contentUri, whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
 
 		return numberOfRowsDelete;
 	}
@@ -200,7 +271,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
-			final int limit ) {
+	                    final int limit ) {
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
 		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
 
@@ -208,14 +279,14 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
-			final List<Pair<String, Order>> orderBys, final int limit ) {
+	                    final List<Pair<String, Order>> orderBys, final int limit ) {
 		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
 
 		return objects;
 	}
 
 	private List<T> get( final String selection, final List<String> selectionArgs,
-			final List<Pair<String, Order>> orderBys, final Integer limit ) {
+	                     final List<Pair<String, Order>> orderBys, final Integer limit ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
@@ -439,7 +510,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	/**
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
-	 * @param replacementObjects The newer collection of database objects that should overwrite the existing collection.
+	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
+	 * collection.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
 	public void replace( final List<T> replacementObjects ) throws StorageModificationException {
@@ -452,9 +524,12 @@ public abstract class Manager<T extends DatabaseObject> {
 	/**
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
-	 * @param replacementObjects The newer collection of database objects that should overwrite the existing collection.
-	 * @param selection A filter declaring which rows to return, formatted as an SQL WHERE clause (excluding the WHERE itself).
-	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in the order that they appear in the selection. The values will be bound as Strings.
+	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
+	 * collection.
+	 * @param selection A filter declaring which rows to return, formatted as an SQL WHERE clause (excluding the WHERE
+	 * itself).
+	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in
+	 * the order that they appear in the selection. The values will be bound as Strings.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
 	public void replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
