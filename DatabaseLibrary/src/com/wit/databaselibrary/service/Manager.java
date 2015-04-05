@@ -271,7 +271,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
-	                    final int limit ) {
+			final int limit ) {
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
 		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
 
@@ -279,14 +279,14 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
-	                    final List<Pair<String, Order>> orderBys, final int limit ) {
+			final List<Pair<String, Order>> orderBys, final int limit ) {
 		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
 
 		return objects;
 	}
 
 	private List<T> get( final String selection, final List<String> selectionArgs,
-	                     final List<Pair<String, Order>> orderBys, final Integer limit ) {
+			final List<Pair<String, Order>> orderBys, final Integer limit ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
@@ -360,6 +360,50 @@ public abstract class Manager<T extends DatabaseObject> {
 	protected abstract String getAuthority();
 
 	protected abstract Contract getContract();
+
+	/**
+	 * Returns the number of {@link DatabaseObject}s that are saved.
+	 *
+	 * @return The number of {@link DatabaseObject}s that are saved.
+	 */
+	public final int getCount() {
+		final String selectionClause = null;
+		final List<String> selectionArgs = Collections.emptyList();
+		final int count = this.getCount( selectionClause, selectionArgs );
+
+		return count;
+	}
+
+	/**
+	 * Returns the number of {@link DatabaseObject}s that are saved that satisfy the given selection criteria.
+	 *
+	 * @param selectionClause The selection clause to use to narrow down the {@link DatabaseObject}s to include in the
+	 * count.
+	 * @param selectionArgs The values to replace the placeholders with in the selection clause.
+	 * @return The number of {@link DatabaseObject}s that are saved that satisfy the given selection criteria.
+	 */
+	public final int getCount( final String selectionClause, final List<String> selectionArgs ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final String[] projection = new String[]{ "count(*)" };
+		final Cursor cursor = this.contentResolver.query( contentUri, projection, selectionClause,
+				selectionArgs.toArray( new String[ selectionArgs.size() ] ), null );
+		final int cursorCount = cursor.getCount();
+		final int count;
+
+		if ( cursorCount == 0 ) {
+			count = 0;
+		} else {
+			cursor.moveToFirst();
+
+			count = cursor.getInt( 0 );
+		}
+
+		cursor.close();
+
+		return count;
+	}
 
 	protected IdWrapper getId( final T object ) {
 		final IdWrapper idWrapper = new SimpleIdWrapper( object.getId() );
