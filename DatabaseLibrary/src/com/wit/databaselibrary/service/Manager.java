@@ -108,6 +108,19 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
+	 * Deletes all {@link DatabaseObject}s associated with this {@link Manager}.
+	 *
+	 * @return The number of {@link DatabaseObject}s that were deleted.
+	 */
+	public int delete() {
+		final String whereClause = null;
+		final List<String> whereArgs = Collections.emptyList();
+		final int numberOfRowsDeleted = this.delete( (Long) null, whereClause, whereArgs );
+
+		return numberOfRowsDeleted;
+	}
+
+	/**
 	 * Deletes the given {@link DatabaseObject}s.
 	 *
 	 * @param objects The {@link DatabaseObject}s to delete.
