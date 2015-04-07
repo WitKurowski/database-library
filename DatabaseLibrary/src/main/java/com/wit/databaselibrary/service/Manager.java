@@ -112,15 +112,22 @@ public abstract class Manager<T extends DatabaseObject> {
 	 *
 	 * @param objects The {@link DatabaseObject}s to delete.
 	 * @return The number of {@link DatabaseObject}s that were deleted.
+	 * @throws StorageModificationException A delete operation failed.
 	 */
-	public int delete( final List<T> objects ) {
-		int numberOfRowsDeleted = 0;
+	public void delete( final List<T> objects ) throws StorageModificationException {
+		final String authority = this.getAuthority();
+		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<>(
+				this.processObjectsToDelete( objects ) );
 
-		for ( final T object : objects ) {
-			numberOfRowsDeleted += this.delete( object );
+		try {
+			this.contentResolver.applyBatch( authority, contentProviderOperations );
+		} catch ( final RemoteException remoteException ) {
+			Log.e( Manager.class.getSimpleName(),
+					"An error happened while attempting to communicate with a remote provider.", remoteException );
+		} catch ( OperationApplicationException operationApplicationException ) {
+			throw new StorageModificationException( "A delete operation failed to be applied.",
+					operationApplicationException );
 		}
-
-		return numberOfRowsDeleted;
 	}
 
 	/**
