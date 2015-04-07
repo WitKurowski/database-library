@@ -129,7 +129,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 */
 	public void delete( final List<T> objects ) throws StorageModificationException {
 		final String authority = this.getAuthority();
-		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<>(
+		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>(
 				this.processObjectsToDelete( objects ) );
 
 		try {
