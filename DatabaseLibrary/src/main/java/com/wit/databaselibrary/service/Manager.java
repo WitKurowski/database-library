@@ -563,7 +563,7 @@ public abstract class Manager<T extends DatabaseObject> {
 			uri = contract.getContentUri( authority, id );
 		}
 
-		final boolean notifyForDescendants = true;
+		final boolean notifyForDescendants = false;
 		final InterfacingContentObserver interfacingContentObserver =
 				new InterfacingContentObserver( this.handler, onUpdateListener );
 
