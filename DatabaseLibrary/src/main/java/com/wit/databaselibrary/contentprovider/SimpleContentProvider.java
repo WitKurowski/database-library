@@ -71,6 +71,29 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		final Context context = this.getContext();
 		final ContentResolver contentResolver = context.getContentResolver();
 
+		if ( !contentProviderOperations.isEmpty() ) {
+			final Uri uri = contentProviderOperations.get( 0 ).getUri();
+			final List<String> pathSegments = uri.getPathSegments();
+			final Uri baseUri;
+
+			if ( pathSegments.size() == 1 ) {
+				baseUri = uri;
+			} else {
+				final String scheme = uri.getScheme();
+				final String authority = uri.getAuthority();
+				final String rootPathSegment = pathSegments.get( 0 );
+				final Uri.Builder baseUriBuilder = new Uri.Builder();
+
+				baseUriBuilder.scheme( scheme );
+				baseUriBuilder.authority( authority );
+				baseUriBuilder.appendPath( rootPathSegment );
+
+				baseUri = baseUriBuilder.build();
+			}
+
+			uris.add( baseUri );
+		}
+
 		for ( final Uri uri : uris ) {
 			contentResolver.notifyChange( uri, null );
 		}
