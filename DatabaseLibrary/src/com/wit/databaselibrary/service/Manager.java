@@ -656,10 +656,10 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public T save( final T object ) {
 		final Long id = object.getId();
-		final boolean managedRemotely = object.isManagedRemotely();
+		final boolean managedExternally = object.isManagedExternally();
 		final T savedObject;
 
-		if ( managedRemotely ) {
+		if ( managedExternally ) {
 			final T existingObject = this.get( id );
 
 			if ( existingObject == null ) {

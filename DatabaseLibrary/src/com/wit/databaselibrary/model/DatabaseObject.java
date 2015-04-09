@@ -50,11 +50,11 @@ public class DatabaseObject {
 	}
 
 	/**
-	 * Returns whether this object and its ID are managed remotely.
+	 * Returns whether this object and its ID are managed externally.
 	 *
-	 * @return Whether this object and its ID are managed remotely.
+	 * @return Whether this object and its ID are managed externally.
 	 */
-	public boolean isManagedRemotely() {
+	public boolean isManagedExternally() {
 		return false;
 	}
 }
