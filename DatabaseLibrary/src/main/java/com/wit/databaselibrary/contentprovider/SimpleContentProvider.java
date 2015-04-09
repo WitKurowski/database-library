@@ -117,7 +117,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
-		final Contract contract = this.getContractByMatchingObjectId( uri );
+		final Contract contract = this.getContract( uri );
 		final Uri rootUri = contract.getContentUri( authority );
 
 		contentResolver.notifyChange( rootUri, null );
@@ -128,18 +128,19 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	protected abstract String getAuthority();
 
 	/**
-	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object.
+	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object or object ID.
 	 *
 	 * @param uri The {@link Uri} to try to match.
-	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object.
-	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object.
+	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object or object ID.
+	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object or object ID.
 	 */
-	private final Contract getContractByMatchingObject( final Uri uri ) throws IllegalArgumentException {
+	private final Contract getContract( final Uri uri ) throws IllegalArgumentException {
 		final String authority = this.getAuthority();
 		Contract contract = null;
 
 		for ( final Contract currentContract : this.contracts ) {
-			if ( currentContract.uriMatchesObject( uri, authority ) ) {
+			if ( currentContract.uriMatchesObject( uri, authority ) ||
+					currentContract.uriMatchesObjectId( uri, authority ) ) {
 				contract = currentContract;
 			}
 		}
@@ -154,18 +155,18 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	}
 
 	/**
-	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object ID.
+	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object.
 	 *
 	 * @param uri The {@link Uri} to try to match.
-	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object ID.
-	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object ID.
+	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object.
+	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object.
 	 */
-	private final Contract getContractByMatchingObjectId( final Uri uri ) throws IllegalArgumentException {
+	private final Contract getContractByMatchingObject( final Uri uri ) throws IllegalArgumentException {
 		final String authority = this.getAuthority();
 		Contract contract = null;
 
 		for ( final Contract currentContract : this.contracts ) {
-			if ( currentContract.uriMatchesObjectId( uri, authority ) ) {
+			if ( currentContract.uriMatchesObject( uri, authority ) ) {
 				contract = currentContract;
 			}
 		}
@@ -333,7 +334,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
-		final Contract contract = this.getContractByMatchingObjectId( uri );
+		final Contract contract = this.getContract( uri );
 		final Uri rootUri = contract.getContentUri( authority );
 
 		contentResolver.notifyChange( rootUri, null );
