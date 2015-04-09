@@ -117,10 +117,67 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
+		final Contract contract = this.getContractByMatchingObjectId( uri );
+		final Uri rootUri = contract.getContentUri( authority );
+
+		contentResolver.notifyChange( rootUri, null );
+
 		return count;
 	}
 
 	protected abstract String getAuthority();
+
+	/**
+	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object.
+	 *
+	 * @param uri The {@link Uri} to try to match.
+	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object.
+	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object.
+	 */
+	private final Contract getContractByMatchingObject( final Uri uri ) throws IllegalArgumentException {
+		final String authority = this.getAuthority();
+		Contract contract = null;
+
+		for ( final Contract currentContract : this.contracts ) {
+			if ( currentContract.uriMatchesObject( uri, authority ) ) {
+				contract = currentContract;
+			}
+		}
+
+		if ( contract == null ) {
+			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
+					"\". Please ensure that it has been added to the list of Contracts passed into the " +
+					SimpleContentProvider.class.getSimpleName() + " class." );
+		}
+
+		return contract;
+	}
+
+	/**
+	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object ID.
+	 *
+	 * @param uri The {@link Uri} to try to match.
+	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object ID.
+	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object ID.
+	 */
+	private final Contract getContractByMatchingObjectId( final Uri uri ) throws IllegalArgumentException {
+		final String authority = this.getAuthority();
+		Contract contract = null;
+
+		for ( final Contract currentContract : this.contracts ) {
+			if ( currentContract.uriMatchesObjectId( uri, authority ) ) {
+				contract = currentContract;
+			}
+		}
+
+		if ( contract == null ) {
+			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
+					"\". Please ensure that it has been added to the list of Contracts passed into the " +
+					SimpleContentProvider.class.getSimpleName() + " class." );
+		}
+
+		return contract;
+	}
 
 	protected abstract SQLiteOpenHelper getDatabaseHelper();
 
@@ -176,21 +233,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	@Override
 	public Uri insert( final Uri uri, ContentValues contentValues ) {
-		final String authority = this.getAuthority();
-		Contract contract = null;
-
-		for ( final Contract currentContract : this.contracts ) {
-			if ( currentContract.uriMatchesObject( uri, authority ) ) {
-				contract = currentContract;
-			}
-		}
-
-		if ( contract == null ) {
-			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
-					"\". Are you sure you added it to the list of Contracts passed into the " +
-					SimpleContentProvider.class.getSimpleName() + " class?" );
-		}
-
+		final Contract contract = this.getContractByMatchingObject( uri );
 		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
 				databaseHelper.getWritableDatabase();
@@ -200,7 +243,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		}
 
 		final String tableName = contract.getTableName();
-		final Uri contentUri = contract.getContentUri( authority );
 		final String nullColumnHack;
 
 		if ( contentValues.size() == 0 ) {
@@ -214,11 +256,15 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		if ( rowId > 0 ) {
 			final Uri contentUriWithAppendedId =
-					ContentUris.withAppendedId( contentUri, rowId );
+					ContentUris.withAppendedId( uri, rowId );
 			final Context context = this.getContext();
 			final ContentResolver contentResolver = context.getContentResolver();
 
 			contentResolver.notifyChange( contentUriWithAppendedId, null );
+
+			final Uri rootUri = uri;
+
+			contentResolver.notifyChange( rootUri, null );
 
 			return contentUriWithAppendedId;
 		} else {
@@ -286,6 +332,11 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		final ContentResolver contentResolver = context.getContentResolver();
 
 		contentResolver.notifyChange( uri, null );
+
+		final Contract contract = this.getContractByMatchingObjectId( uri );
+		final Uri rootUri = contract.getContentUri( authority );
+
+		contentResolver.notifyChange( rootUri, null );
 
 		return count;
 	}
