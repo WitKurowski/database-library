@@ -450,9 +450,23 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Uri contentUri = contract.getContentUri( authority );
 		final Long id = object.getId();
 		final ContentValues contentValues = this.generateContentValues( object );
-		final String whereClause = BaseColumns._ID + "=" + id.intValue();
+		final boolean managedExternally = object.isManagedExternally();
+		final String whereClause;
+		final List<String> whereArgs = new ArrayList<String>();
+
+		if ( managedExternally ) {
+			whereClause = BaseColumns._ID + " = ? AND " + Contract.Columns.VERSION + " < ?";
+
+			whereArgs.add( String.valueOf( id ) );
+			whereArgs.add( String.valueOf( object.getVersion() ) );
+		} else {
+			whereClause = BaseColumns._ID + " = ?";
+
+			whereArgs.add( String.valueOf( id ) );
+		}
+
 		final int i = this.contentResolver.update( contentUri, contentValues,
-				whereClause, null );
+				whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
 		final T savedObject;
 
 		if ( i == 1 ) {
