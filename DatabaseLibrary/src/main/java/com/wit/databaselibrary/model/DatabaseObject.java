@@ -9,7 +9,7 @@ public class DatabaseObject {
 	/**
 	 * The numerical value used to determine which instance of an object is most up-to-date.
 	 */
-	private final Long version;
+	private Long version;
 
 	/**
 	 * Creates a new {@link DatabaseObject}.
@@ -17,7 +17,7 @@ public class DatabaseObject {
 	 * @param id The unique identifier for this object.
 	 */
 	public DatabaseObject( final Long id ) {
-		this(id, 1L);
+		this( id, 1L );
 	}
 
 	/**
@@ -56,5 +56,14 @@ public class DatabaseObject {
 	 */
 	public boolean isManagedExternally() {
 		return false;
+	}
+
+	/**
+	 * Sets the numerical value used to determine which instance of an object is most up-to-date.
+	 *
+	 * @param version The numerical value used to determine which instance of an object is most up-to-date.
+	 */
+	public void setVersion( final Long version ) {
+		this.version = version;
 	}
 }
