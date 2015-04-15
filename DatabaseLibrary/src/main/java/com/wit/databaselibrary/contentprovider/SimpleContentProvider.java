@@ -19,10 +19,8 @@ import android.provider.BaseColumns;
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	private final List<Contract> contracts;
@@ -47,55 +45,11 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public ContentProviderResult[] applyBatch( final ArrayList<ContentProviderOperation> contentProviderOperations )
 			throws OperationApplicationException {
 		final List<ContentProviderResult> contentProviderResults = new ArrayList<ContentProviderResult>();
-		final Set<Uri> uris = new HashSet<Uri>();
 
 		for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
 			final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
-			final Uri newObjectUri = contentProviderResult.uri;
-
-			if ( newObjectUri == null ) {
-				final int count = contentProviderResult.count;
-
-				if ( count >= 1 ) {
-					final Uri uri = contentProviderOperation.getUri();
-
-					uris.add( uri );
-				}
-			} else {
-				uris.add( newObjectUri );
-			}
 
 			contentProviderResults.add( contentProviderResult );
-		}
-
-		final Context context = this.getContext();
-		final ContentResolver contentResolver = context.getContentResolver();
-
-		if ( !contentProviderOperations.isEmpty() ) {
-			final Uri uri = contentProviderOperations.get( 0 ).getUri();
-			final List<String> pathSegments = uri.getPathSegments();
-			final Uri baseUri;
-
-			if ( pathSegments.size() == 1 ) {
-				baseUri = uri;
-			} else {
-				final String scheme = uri.getScheme();
-				final String authority = uri.getAuthority();
-				final String rootPathSegment = pathSegments.get( 0 );
-				final Uri.Builder baseUriBuilder = new Uri.Builder();
-
-				baseUriBuilder.scheme( scheme );
-				baseUriBuilder.authority( authority );
-				baseUriBuilder.appendPath( rootPathSegment );
-
-				baseUri = baseUriBuilder.build();
-			}
-
-			uris.add( baseUri );
-		}
-
-		for ( final Uri uri : uris ) {
-			contentResolver.notifyChange( uri, null );
 		}
 
 		return contentProviderResults.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
