@@ -517,11 +517,15 @@ public abstract class Manager<T extends DatabaseObject> {
 		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
 
 		for ( final T objectToDelete : objectsToDelete ) {
-			final Long id = objectToDelete.getId();
+			final long id = objectToDelete.getId();
 			final Uri modifiedObjectUri = ContentUris.withAppendedId( contentUri, id );
 			final ContentProviderOperation.Builder builder = ContentProviderOperation.newDelete( modifiedObjectUri );
+			final String selectionClause = BaseColumns._ID + " = ?";
+			final List<String> selectionArgs = new ArrayList<String>();
 
-			builder.withSelection( "", null );
+			selectionArgs.add( String.valueOf( id ) );
+
+			builder.withSelection( selectionClause, selectionArgs.toArray( new String[ selectionArgs.size() ] ) );
 
 			final ContentProviderOperation objectToDeleteContentProviderOperation = builder.build();
 
@@ -544,12 +548,16 @@ public abstract class Manager<T extends DatabaseObject> {
 		final List<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
 
 		for ( final T objectToUpdate : objectsToUpdate ) {
-			final Long id = objectToUpdate.getId();
+			final long id = objectToUpdate.getId();
 			final Uri modifiedObjectUri = ContentUris.withAppendedId( contentUri, id );
 			final ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate( modifiedObjectUri );
 			final ContentValues contentValues = this.generateContentValues( objectToUpdate );
+			final String selectionClause = BaseColumns._ID + " = ?";
+			final List<String> selectionArgs = new ArrayList<String>();
 
-			builder.withSelection( BaseColumns._ID + " = ?", new String[]{ id.toString() } );
+			selectionArgs.add( String.valueOf( id ) );
+
+			builder.withSelection( selectionClause, selectionArgs.toArray( new String[ selectionArgs.size() ] ) );
 			builder.withValues( contentValues );
 
 			final ContentProviderOperation objectToUpdateContentProviderOperation = builder.build();
