@@ -29,31 +29,37 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Manager<T extends DatabaseObject> {
-	public interface OnUpdateListener {
-		public void onUpdate();
+	public static interface OnUpdateListener<T extends DatabaseObject> {
+		public void onUpdate( final List<T> objects );
 	}
 
-	protected class InterfacingContentObserver extends ContentObserver {
+	protected static class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
 		private final Manager.OnUpdateListener onUpdateListener;
+		private final Manager<T> manager;
 
 		/**
 		 * Creates a content observer.
 		 *
 		 * @param handler The handler to run {@link #onChange} on, or null if none.
+		 * @param manager The
 		 */
-		public InterfacingContentObserver( final Handler handler, final Manager.OnUpdateListener onUpdateListener ) {
+		public InterfacingContentObserver( final Handler handler, final OnUpdateListener onUpdateListener,
+				final Manager<T> manager ) {
 			super( handler );
 
 			this.onUpdateListener = onUpdateListener;
+			this.manager = manager;
 		}
 
 		@Override
-		public void onChange( boolean selfChange ) {
+		public void onChange( final boolean selfChange ) {
 			onChange( selfChange, null );
 		}
 
-		public void onChange( boolean selfChange, Uri uri ) {
-			this.onUpdateListener.onUpdate();
+		public void onChange( final boolean selfChange, final Uri uri ) {
+			final List<T> objects = this.manager.get( uri );
+
+			this.onUpdateListener.onUpdate( objects );
 		}
 	}
 
@@ -231,14 +237,12 @@ public abstract class Manager<T extends DatabaseObject> {
 				this.contentResolver.query( contentUri,
 						projection.toArray( new String[ projection.size() ] ),
 						null, null, null );
-		final List<T> objects = new ArrayList<T>();
+		final List<T> objects;
 
-		if ( cursor != null ) {
-			while ( cursor.moveToNext() ) {
-				final T object = this.get( cursor );
-
-				objects.add( object );
-			}
+		if ( cursor == null ) {
+			objects = Collections.emptyList();
+		} else {
+			objects = this.getAll( cursor );
 
 			cursor.close();
 		}
@@ -353,28 +357,36 @@ public abstract class Manager<T extends DatabaseObject> {
 		return objects;
 	}
 
-	private T get( final Uri uri ) {
+	private List<T> get( final Uri uri ) {
 		final Contract contract = this.getContract();
 		final List<String> projection = contract.getColumnNames();
 		final Cursor cursor =
 				this.contentResolver.query( uri,
 						projection.toArray( new String[ projection.size() ] ),
 						null, null, null );
-		final T object;
+		final List<T> objects;
 
 		if ( cursor == null ) {
-			object = null;
+			objects = Collections.emptyList();
 		} else {
-			if ( cursor.moveToNext() ) {
-				object = this.get( cursor );
-			} else {
-				object = null;
-			}
+			objects = this.getAll( cursor );
 
 			cursor.close();
 		}
 
-		return object;
+		return objects;
+	}
+
+	private List<T> getAll( final Cursor cursor ) {
+		final List<T> objects = new ArrayList<T>();
+
+		while ( cursor.moveToNext() ) {
+			final T object = this.get( cursor );
+
+			objects.add( object );
+		}
+
+		return objects;
 	}
 
 	protected abstract String getAuthority();
@@ -438,8 +450,8 @@ public abstract class Manager<T extends DatabaseObject> {
 		final ContentValues contentValues = this.generateContentValues( object );
 		final Uri uri =
 				this.contentResolver.insert( contentUri, contentValues );
-
-		final T savedObject = this.get( uri );
+		final List<T> savedObjects = this.get( uri );
+		final T savedObject = savedObjects.get( 0 );
 
 		return savedObject;
 	}
@@ -587,7 +599,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		final boolean notifyForDescendants = false;
 		final InterfacingContentObserver interfacingContentObserver =
-				new InterfacingContentObserver( this.handler, onUpdateListener );
+				new InterfacingContentObserver( this.handler, onUpdateListener, this );
 
 		this.contentObservers.put( onUpdateListener, interfacingContentObserver );
 		this.contentResolver.registerContentObserver( uri, notifyForDescendants, interfacingContentObserver );
