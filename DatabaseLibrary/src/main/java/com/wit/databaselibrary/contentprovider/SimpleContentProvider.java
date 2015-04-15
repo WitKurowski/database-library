@@ -106,12 +106,11 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			final String[] selectionArgs ) {
 		final String authority = this.getAuthority();
 		final String tableName = this.getTableName( uri, authority );
-		final String newSelection = this.adjustSelection( uri, selection, authority );
 		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
 				databaseHelper.getWritableDatabase();
 		final int count =
-				sqLiteDatabase.delete( tableName, newSelection, selectionArgs );
+				sqLiteDatabase.delete( tableName, selection, selectionArgs );
 		final Context context = this.getContext();
 		final ContentResolver contentResolver = context.getContentResolver();
 
