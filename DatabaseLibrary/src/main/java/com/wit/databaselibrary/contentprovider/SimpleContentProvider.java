@@ -24,6 +24,7 @@ import java.util.Map;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	private final List<Contract> contracts;
+	private boolean applyingBatch = false;
 
 	public SimpleContentProvider( final List<Contract> contracts ) {
 		this.contracts = contracts;
@@ -46,10 +47,40 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			throws OperationApplicationException {
 		final List<ContentProviderResult> contentProviderResults = new ArrayList<ContentProviderResult>();
 
+		this.applyingBatch = true;
+
 		for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
 			final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
 
 			contentProviderResults.add( contentProviderResult );
+		}
+
+		this.applyingBatch = false;
+
+		if ( !contentProviderOperations.isEmpty() ) {
+			final Uri uri = contentProviderOperations.get( 0 ).getUri();
+			final List<String> pathSegments = uri.getPathSegments();
+			final Uri baseUri;
+
+			if ( pathSegments.size() == 1 ) {
+				baseUri = uri;
+			} else {
+				final String scheme = uri.getScheme();
+				final String authority = uri.getAuthority();
+				final String rootPathSegment = pathSegments.get( 0 );
+				final Uri.Builder baseUriBuilder = new Uri.Builder();
+
+				baseUriBuilder.scheme( scheme );
+				baseUriBuilder.authority( authority );
+				baseUriBuilder.appendPath( rootPathSegment );
+
+				baseUri = baseUriBuilder.build();
+			}
+
+			final Context context = this.getContext();
+			final ContentResolver contentResolver = context.getContentResolver();
+
+			contentResolver.notifyChange( baseUri, null );
 		}
 
 		return contentProviderResults.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
@@ -70,10 +101,12 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
-		final Contract contract = this.getContract( uri );
-		final Uri rootUri = contract.getContentUri( authority );
+		if (!this.applyingBatch) {
+			final Contract contract = this.getContract(uri);
+			final Uri rootUri = contract.getContentUri(authority);
 
-		contentResolver.notifyChange( rootUri, null );
+			contentResolver.notifyChange(rootUri, null);
+		}
 
 		return count;
 	}
@@ -216,9 +249,12 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 			contentResolver.notifyChange( contentUriWithAppendedId, null );
 
-			final Uri rootUri = uri;
 
-			contentResolver.notifyChange( rootUri, null );
+			if (!this.applyingBatch) {
+				final Uri rootUri = uri;
+
+				contentResolver.notifyChange(rootUri, null);
+			}
 
 			return contentUriWithAppendedId;
 		} else {
@@ -287,10 +323,12 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
-		final Contract contract = this.getContract( uri );
-		final Uri rootUri = contract.getContentUri( authority );
+		if (!this.applyingBatch) {
+			final Contract contract = this.getContract(uri);
+			final Uri rootUri = contract.getContentUri(authority);
 
-		contentResolver.notifyChange( rootUri, null );
+			contentResolver.notifyChange(rootUri, null);
+		}
 
 		return count;
 	}
