@@ -101,11 +101,11 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
-		if (!this.applyingBatch) {
-			final Contract contract = this.getContract(uri);
-			final Uri rootUri = contract.getContentUri(authority);
+		if ( !this.applyingBatch ) {
+			final Contract contract = this.getContract( uri );
+			final Uri rootUri = contract.getContentUri( authority );
 
-			contentResolver.notifyChange(rootUri, null);
+			contentResolver.notifyChange( rootUri, null );
 		}
 
 		return count;
@@ -118,7 +118,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	 *
 	 * @param uri The {@link Uri} to try to match.
 	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object or object ID.
-	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object or object ID.
+	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object or object
+	 * ID.
 	 */
 	private final Contract getContract( final Uri uri ) throws IllegalArgumentException {
 		final String authority = this.getAuthority();
@@ -250,10 +251,10 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			contentResolver.notifyChange( contentUriWithAppendedId, null );
 
 
-			if (!this.applyingBatch) {
+			if ( !this.applyingBatch ) {
 				final Uri rootUri = uri;
 
-				contentResolver.notifyChange(rootUri, null);
+				contentResolver.notifyChange( rootUri, null );
 			}
 
 			return contentUriWithAppendedId;
@@ -323,11 +324,11 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		contentResolver.notifyChange( uri, null );
 
-		if (!this.applyingBatch) {
-			final Contract contract = this.getContract(uri);
-			final Uri rootUri = contract.getContentUri(authority);
+		if ( !this.applyingBatch ) {
+			final Contract contract = this.getContract( uri );
+			final Uri rootUri = contract.getContentUri( authority );
 
-			contentResolver.notifyChange(rootUri, null);
+			contentResolver.notifyChange( rootUri, null );
 		}
 
 		return count;
