@@ -49,7 +49,7 @@ public abstract class Contract {
 	public final String getContentType() {
 		final String tableName = this.getTableName();
 		final String contentType =
-				ContentResolver.CURSOR_DIR_BASE_TYPE+ "/vnd.wit." + tableName;
+				ContentResolver.CURSOR_DIR_BASE_TYPE + "/vnd.wit." + tableName;
 
 		return contentType;
 	}
@@ -57,25 +57,58 @@ public abstract class Contract {
 	public final String getContentItemType() {
 		final String tableName = this.getTableName();
 		final String contentType =
-				ContentResolver.CURSOR_ITEM_BASE_TYPE+ "/vnd.wit." + tableName;
+				ContentResolver.CURSOR_ITEM_BASE_TYPE + "/vnd.wit." + tableName;
 
 		return contentType;
 	}
 
 	public Uri getContentUri( final String authority ) {
-		final String tableName = this.getTableName();
-		final Uri contentUri =
-				Uri.parse( "content://" + authority + "/" + tableName );
+		final String contentUriString = this.getContentUriString( authority );
+		final Uri contentUri = Uri.parse( contentUriString );
 
 		return contentUri;
 	}
 
 	public Uri getContentUri( final String authority, final long id ) {
-		final String tableName = this.getTableName();
-		final Uri contentUri =
-				Uri.parse( "content://" + authority + "/" + tableName + "/" + id );
+		final String contentUriString = this.getContentUriString( authority );
+		final Uri contentUri = Uri.parse( contentUriString + "/" + id );
 
 		return contentUri;
+	}
+
+	/**
+	 * Returns the root content URI as a {@link String}.
+	 *
+	 * @param authority The authority string to use in the root content URI.
+	 * @return The root content URI as a {@link String}.
+	 */
+	private final String getContentUriString( final String authority ) {
+		final String tableName = this.getTableName();
+		final String contentUriString = "content://" + authority + "/" + tableName;
+
+		return contentUriString;
+	}
+
+	/**
+	 * Extracts the ID from the given {@link Uri}.
+	 *
+	 * @param uri The {@link Uri} with the ID that should be extracted.
+	 * @return The ID from the given {@link Uri}.
+	 * @throws IllegalArgumentException The given {@link Uri} did not have exactly 2 path segments, one for the root
+	 * object and one for the specific ID.
+	 */
+	public final long getId( final Uri uri ) throws IllegalArgumentException {
+		final List<String> pathSegments = uri.getPathSegments();
+		final int numberOfPathSegments = pathSegments.size();
+		final long id;
+
+		if ( numberOfPathSegments == 2 ) {
+			id = Long.valueOf( pathSegments.get( 1 ) );
+		} else {
+			throw new IllegalArgumentException( "Unable to parse ID from URI '" + uri.getPath() + "'." );
+		}
+
+		return id;
 	}
 
 	public final Map<String, String> getProjectionMap() {
@@ -83,6 +116,26 @@ public abstract class Contract {
 	}
 
 	public abstract String getTableName();
+
+	/**
+	 * Returns whether the given {@link Uri} contains an ID.
+	 *
+	 * @param uri The {@link Uri} to check for the existence of an ID.
+	 * @return Whether the given {@link Uri} contains an ID.
+	 */
+	public final boolean hasId( final Uri uri ) {
+		final List<String> pathSegments = uri.getPathSegments();
+		final int numberOfPathSegments = pathSegments.size();
+		final boolean hasId;
+
+		if ( numberOfPathSegments == 2 ) {
+			hasId = true;
+		} else {
+			hasId = false;
+		}
+
+		return hasId;
+	}
 
 	private void setupProjectionMap() {
 		for ( final String columnName : this.columnNames ) {
