@@ -641,9 +641,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * {@link DatabaseObject}s.  If false, notifications will be only be delivered for changes to the database table in
 	 * general.
 	 */
-	public void registerForUpdates( final OnChangeListener onChangeListener,
+	public void registerForChanges( final OnChangeListener onChangeListener,
 			final boolean notifyStrictlyForDescendants ) {
-		this.registerForUpdates( null, onChangeListener, notifyStrictlyForDescendants );
+		this.registerForChanges( null, onChangeListener, notifyStrictlyForDescendants );
 	}
 
 	/**
@@ -652,10 +652,10 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @param t The {@link DatabaseObject} to listen to changes for.
 	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
 	 */
-	public void registerForUpdates( final T t, final OnChangeListener onChangeListener ) {
+	public void registerForChanges( final T t, final OnChangeListener onChangeListener ) {
 		final boolean notifyStrictlyForDescendants = false;
 
-		this.registerForUpdates( t, onChangeListener, notifyStrictlyForDescendants );
+		this.registerForChanges( t, onChangeListener, notifyStrictlyForDescendants );
 	}
 
 	/**
@@ -669,7 +669,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * {@link DatabaseObject}s.  If false, notifications will be only be delivered for changes to the database table in
 	 * general.
 	 */
-	private void registerForUpdates( final T t, final OnChangeListener onChangeListener,
+	private void registerForChanges( final T t, final OnChangeListener onChangeListener,
 			final boolean notifyStrictlyForDescendants ) {
 		final String authority = this.getAuthority();
 		final Contract contract = this.getContract();
