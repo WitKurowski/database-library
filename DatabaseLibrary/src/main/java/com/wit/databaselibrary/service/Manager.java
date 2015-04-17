@@ -43,6 +43,13 @@ public abstract class Manager<T extends DatabaseObject> {
 		 * @param objects The objects that have changed.
 		 */
 		public void onUpdate( final List<T> objects );
+
+		/**
+		 * Performs whatever work is necessary in response to the given object having changed.
+		 *
+		 * @param object The object that has changed.
+		 */
+		public void onUpdate( final T object );
 	}
 
 	protected static class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
@@ -53,7 +60,8 @@ public abstract class Manager<T extends DatabaseObject> {
 		 * Creates a content observer.
 		 *
 		 * @param handler The handler to run {@link #onChange} on, or null if none.
-		 * @param manager The
+		 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
+		 * @param manager The {@link Manager} to use when parsing {@link Uri}s.
 		 */
 		public InterfacingContentObserver( final Handler handler, final OnChangeListener onChangeListener,
 				final Manager<T> manager ) {
@@ -69,16 +77,20 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 
 		public void onChange( final boolean selfChange, final Uri uri ) {
+			final Contract contract = this.manager.getContract();
+			final boolean hasId = contract.hasId( uri );
 			final List<T> objects = this.manager.get( uri );
 
-			if ( objects.isEmpty() ) {
-				final Contract contract = this.manager.getContract();
-				final boolean hasId = contract.hasId( uri );
+			if ( hasId ) {
+				final long deletedObjectId = contract.getId( uri );
+				final boolean noObjectsFound = objects.isEmpty();
 
-				if ( hasId ) {
-					final long id = contract.getId( uri );
+				if ( noObjectsFound ) {
+					this.onChangeListener.onDelete( deletedObjectId );
+				} else {
+					final T updatedObject = objects.get( 0 );
 
-					this.onChangeListener.onDelete( id );
+					this.onChangeListener.onUpdate( updatedObject );
 				}
 			} else {
 				this.onChangeListener.onUpdate( objects );
