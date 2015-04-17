@@ -29,12 +29,24 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Manager<T extends DatabaseObject> {
-	public static interface OnUpdateListener<T extends DatabaseObject> {
+	public static interface OnChangeListener<T extends DatabaseObject> {
+		/**
+		 * Performs whatever work is necessary in response to the object with the given ID having been deleted.
+		 *
+		 * @param id The ID of the deleted object.
+		 */
+		public void onDelete( final long id );
+
+		/**
+		 * Performs whatever work is necessary in response to the given collection of objects having changed.
+		 *
+		 * @param objects The objects that have changed.
+		 */
 		public void onUpdate( final List<T> objects );
 	}
 
 	protected static class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
-		private final Manager.OnUpdateListener onUpdateListener;
+		private final OnChangeListener onChangeListener;
 		private final Manager<T> manager;
 
 		/**
@@ -43,11 +55,11 @@ public abstract class Manager<T extends DatabaseObject> {
 		 * @param handler The handler to run {@link #onChange} on, or null if none.
 		 * @param manager The
 		 */
-		public InterfacingContentObserver( final Handler handler, final OnUpdateListener onUpdateListener,
+		public InterfacingContentObserver( final Handler handler, final OnChangeListener onChangeListener,
 				final Manager<T> manager ) {
 			super( handler );
 
-			this.onUpdateListener = onUpdateListener;
+			this.onChangeListener = onChangeListener;
 			this.manager = manager;
 		}
 
@@ -59,14 +71,25 @@ public abstract class Manager<T extends DatabaseObject> {
 		public void onChange( final boolean selfChange, final Uri uri ) {
 			final List<T> objects = this.manager.get( uri );
 
-			this.onUpdateListener.onUpdate( objects );
+			if ( objects.isEmpty() ) {
+				final Contract contract = this.manager.getContract();
+				final boolean hasId = contract.hasId( uri );
+
+				if ( hasId ) {
+					final long id = contract.getId( uri );
+
+					this.onChangeListener.onDelete( id );
+				}
+			} else {
+				this.onChangeListener.onUpdate( objects );
+			}
 		}
 	}
 
 	private final ContentResolver contentResolver;
 	private final Handler handler;
-	private final Map<Manager.OnUpdateListener, ContentObserver> contentObservers =
-			new HashMap<Manager.OnUpdateListener, ContentObserver>();
+	private final Map<OnChangeListener, ContentObserver> contentObservers =
+			new HashMap<OnChangeListener, ContentObserver>();
 	protected final String packageName;
 
 	protected Manager( final Context context ) {
@@ -580,11 +603,11 @@ public abstract class Manager<T extends DatabaseObject> {
 		return contentProviderOperations;
 	}
 
-	public void registerForUpdates( final Manager.OnUpdateListener onUpdateListener ) {
-		this.registerForUpdates( null, onUpdateListener );
+	public void registerForUpdates( final OnChangeListener onChangeListener ) {
+		this.registerForUpdates( null, onChangeListener );
 	}
 
-	public void registerForUpdates( final T t, final Manager.OnUpdateListener onUpdateListener ) {
+	public void registerForUpdates( final T t, final OnChangeListener onChangeListener ) {
 		final String authority = this.getAuthority();
 		final Contract contract = this.getContract();
 		final Uri uri;
@@ -599,9 +622,9 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		final boolean notifyForDescendants = false;
 		final InterfacingContentObserver interfacingContentObserver =
-				new InterfacingContentObserver( this.handler, onUpdateListener, this );
+				new InterfacingContentObserver( this.handler, onChangeListener, this );
 
-		this.contentObservers.put( onUpdateListener, interfacingContentObserver );
+		this.contentObservers.put( onChangeListener, interfacingContentObserver );
 		this.contentResolver.registerContentObserver( uri, notifyForDescendants, interfacingContentObserver );
 	}
 
@@ -712,10 +735,10 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObject;
 	}
 
-	public void unregisterForUpdates( final Manager.OnUpdateListener onUpdateListener ) {
-		final ContentObserver contentObserver = this.contentObservers.get( onUpdateListener );
+	public void unregisterForUpdates( final OnChangeListener onChangeListener ) {
+		final ContentObserver contentObserver = this.contentObservers.get( onChangeListener );
 
 		this.contentResolver.unregisterContentObserver( contentObserver );
-		this.contentObservers.remove( onUpdateListener );
+		this.contentObservers.remove( onChangeListener );
 	}
 }
