@@ -798,7 +798,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObject;
 	}
 
-	public void unregisterForUpdates( final OnChangeListener onChangeListener ) {
+	public void unregisterForChanges( final OnChangeListener onChangeListener ) {
 		final ContentObserver contentObserver = this.contentObservers.get( onChangeListener );
 
 		this.contentResolver.unregisterContentObserver( contentObserver );
