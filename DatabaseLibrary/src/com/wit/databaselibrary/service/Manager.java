@@ -801,7 +801,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	public void unregisterForChanges( final OnChangeListener onChangeListener ) {
 		final ContentObserver contentObserver = this.contentObservers.get( onChangeListener );
 
-		this.contentResolver.unregisterContentObserver( contentObserver );
-		this.contentObservers.remove( onChangeListener );
+		if (contentObserver != null) {
+			this.contentResolver.unregisterContentObserver(contentObserver);
+			this.contentObservers.remove(onChangeListener);
+		}
 	}
 }
