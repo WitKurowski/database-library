@@ -9,6 +9,7 @@ import android.content.OperationApplicationException;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.RemoteException;
 import android.provider.BaseColumns;
@@ -29,30 +30,82 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Manager<T extends DatabaseObject> {
-	public static interface OnChangeListener<T extends DatabaseObject> {
+	protected static final class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
 		/**
-		 * Performs whatever work is necessary in response to some objects in the given collection having changed.
-		 *
-		 * @param allObjects The entire collection of objects, some of which have changed.
+		 * Retrieves the {@link DatabaseObject}(s) linked to by the given URI, determines what kind of change was made,
+		 * and then informs the given OnChangeListener as appropriate.
 		 */
-		public void onChange( final List<T> allObjects );
+		private final class RetrieveDatabaseObjectsAsyncTask extends AsyncTask<Void, Void, List<T>> {
+			/**
+			 * The {@link Manager} to use when parsing {@link Uri}s.
+			 */
+			private final Manager<T> manager;
 
-		/**
-		 * Performs whatever work is necessary in response to the given object having been created/updated.
-		 *
-		 * @param changedObject The object that has been created/updated.
-		 */
-		public void onChange( final T changedObject );
+			/**
+			 * Whether notifications should only be done for URIs containing IDs.
+			 */
+			private final boolean notifyStrictlyForDescendants;
 
-		/**
-		 * Performs whatever work is necessary in response to the object with the given ID having been deleted.
-		 *
-		 * @param id The ID of the deleted object.
-		 */
-		public void onDelete( final long id );
-	}
+			/**
+			 * The {@link OnChangeListener} to inform about what kind of change has been made.
+			 */
+			private final OnChangeListener<T> onChangeListener;
 
-	protected static class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
+			/**
+			 * The {@link Uri} of the changed content.
+			 */
+			private final Uri uri;
+
+			/**
+			 * Creates a {@link RetrieveDatabaseObjectsAsyncTask} object.
+			 *
+			 * @param manager The {@link Manager} to use when parsing {@link Uri}s.
+			 * @param notifyStrictlyForDescendants Whether notifications should only be done for URIs containing IDs.
+			 * @param onChangeListener The {@link OnChangeListener} to inform about what kind of change has been made.
+			 * @param uri The {@link Uri} of the changed content.
+			 */
+			public RetrieveDatabaseObjectsAsyncTask( final Manager<T> manager,
+					final boolean notifyStrictlyForDescendants, final OnChangeListener<T> onChangeListener,
+					final Uri uri ) {
+				this.manager = manager;
+				this.notifyStrictlyForDescendants = notifyStrictlyForDescendants;
+				this.onChangeListener = onChangeListener;
+				this.uri = uri;
+			}
+
+			@Override
+			protected List<T> doInBackground( final Void... params ) {
+				final List<T> databaseObjects = this.manager.get( this.uri );
+
+				return databaseObjects;
+			}
+
+			@Override
+			protected void onPostExecute( final List<T> databaseObjects ) {
+				super.onPostExecute( databaseObjects );
+
+				final Contract contract = this.manager.getContract();
+				final boolean hasId = contract.hasId( uri );
+
+				if ( hasId ) {
+					final long objectId = contract.getId( uri );
+					final boolean noObjectsFound = databaseObjects.isEmpty();
+
+					if ( noObjectsFound ) {
+						this.onChangeListener.onDelete( objectId );
+					} else {
+						final T updatedObject = databaseObjects.get( 0 );
+
+						this.onChangeListener.onChange( updatedObject );
+					}
+				} else {
+					if ( !this.notifyStrictlyForDescendants ) {
+						this.onChangeListener.onChange( databaseObjects );
+					}
+				}
+			}
+		}
+
 		/**
 		 * The {@link OnChangeListener} to call when a change has been made.
 		 */
@@ -91,27 +144,35 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 
 		public void onChange( final boolean selfChange, final Uri uri ) {
-			final Contract contract = this.manager.getContract();
-			final boolean hasId = contract.hasId( uri );
-			final List<T> objects = this.manager.get( uri );
+			final RetrieveDatabaseObjectsAsyncTask retrieveDatabaseObjectsAsyncTask =
+					new RetrieveDatabaseObjectsAsyncTask( this.manager, this.notifyStrictlyForDescendants,
+							this.onChangeListener, uri );
 
-			if ( hasId ) {
-				final long objectId = contract.getId( uri );
-				final boolean noObjectsFound = objects.isEmpty();
-
-				if ( noObjectsFound ) {
-					this.onChangeListener.onDelete( objectId );
-				} else {
-					final T updatedObject = objects.get( 0 );
-
-					this.onChangeListener.onChange( updatedObject );
-				}
-			} else {
-				if ( !this.notifyStrictlyForDescendants ) {
-					this.onChangeListener.onChange( objects );
-				}
-			}
+			retrieveDatabaseObjectsAsyncTask.execute();
 		}
+	}
+
+	public static interface OnChangeListener<T extends DatabaseObject> {
+		/**
+		 * Performs whatever work is necessary in response to some objects in the given collection having changed.
+		 *
+		 * @param allObjects The entire collection of objects, some of which have changed.
+		 */
+		public void onChange( final List<T> allObjects );
+
+		/**
+		 * Performs whatever work is necessary in response to the given object having been created/updated.
+		 *
+		 * @param changedObject The object that has been created/updated.
+		 */
+		public void onChange( final T changedObject );
+
+		/**
+		 * Performs whatever work is necessary in response to the object with the given ID having been deleted.
+		 *
+		 * @param id The ID of the deleted object.
+		 */
+		public void onDelete( final long id );
 	}
 
 	private final ContentResolver contentResolver;
@@ -801,9 +862,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	public void unregisterForChanges( final OnChangeListener onChangeListener ) {
 		final ContentObserver contentObserver = this.contentObservers.get( onChangeListener );
 
-		if (contentObserver != null) {
-			this.contentResolver.unregisterContentObserver(contentObserver);
-			this.contentObservers.remove(onChangeListener);
+		if ( contentObserver != null ) {
+			this.contentResolver.unregisterContentObserver( contentObserver );
+			this.contentObservers.remove( onChangeListener );
 		}
 	}
 }
