@@ -571,8 +571,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	private T performUpdate( final T object ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
-		final Uri contentUri = contract.getContentUri( authority );
 		final Long id = object.getId();
+		final Uri contentUri = contract.getContentUri( authority, id );
 		final ContentValues contentValues = this.generateContentValues( object );
 		final boolean managedExternally = object.isManagedExternally();
 		final String whereClause;
