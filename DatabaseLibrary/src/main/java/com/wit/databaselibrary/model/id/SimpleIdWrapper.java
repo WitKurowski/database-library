@@ -26,9 +26,9 @@ public class SimpleIdWrapper implements IdWrapper {
 			return false;
 		}
 
-		final SimpleIdWrapper simpleId = (SimpleIdWrapper) o;
+		final SimpleIdWrapper that = (SimpleIdWrapper) o;
 
-		if ( !this.id.equals( simpleId.id ) ) {
+		if ( id != null ? !id.equals( that.id ) : that.id != null ) {
 			return false;
 		}
 
@@ -37,6 +37,6 @@ public class SimpleIdWrapper implements IdWrapper {
 
 	@Override
 	public int hashCode() {
-		return this.id.hashCode();
+		return id != null ? id.hashCode() : 0;
 	}
 }
