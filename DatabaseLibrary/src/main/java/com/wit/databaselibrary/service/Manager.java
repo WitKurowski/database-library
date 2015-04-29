@@ -568,12 +568,19 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObject;
 	}
 
-	private T performUpdate( final T object ) {
+	/**
+	 * Updates the stored data related to the given {@link DatabaseObject} with the data in that {@link
+	 * DatabaseObject}.
+	 *
+	 * @param object The {@link DatabaseObject} to use in the update.
+	 * @return The updated {@link DatabaseObject} from local storage.
+	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
+	 * with local storage.
+	 */
+	private T performUpdate( final T object ) throws IllegalArgumentException {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
-		final Long id = object.getId();
-		final Uri contentUri = contract.getContentUri( authority, id );
-		final ContentValues contentValues = this.generateContentValues( object );
+		final long id = object.getId();
 		final boolean managedExternally = object.isManagedExternally();
 		final String whereClause;
 		final List<String> whereArgs = new ArrayList<String>();
@@ -584,11 +591,27 @@ public abstract class Manager<T extends DatabaseObject> {
 			whereArgs.add( String.valueOf( id ) );
 			whereArgs.add( String.valueOf( object.getVersion() ) );
 		} else {
-			whereClause = BaseColumns._ID + " = ?";
+			final T savedObject = this.get( id );
+			final long savedObjectVersion = savedObject.getVersion();
+			final long newObjectVersion = object.getVersion();
+
+			if ( newObjectVersion < savedObjectVersion ) {
+				throw new IllegalArgumentException(
+						"Attempting to update a stale object.  The stored version of the object is '" +
+								savedObjectVersion + "' while the passed in object has a version of '" +
+								newObjectVersion + "'." );
+			}
+
+			whereClause = BaseColumns._ID + " = ? AND " + Contract.Columns.VERSION + " = ?";
 
 			whereArgs.add( String.valueOf( id ) );
+			whereArgs.add( String.valueOf( savedObjectVersion ) );
+
+			object.setVersion( newObjectVersion + 1 );
 		}
 
+		final Uri contentUri = contract.getContentUri( authority, id );
+		final ContentValues contentValues = this.generateContentValues( object );
 		final int i = this.contentResolver.update( contentUri, contentValues,
 				whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
 		final T savedObject;
@@ -835,6 +858,19 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObjects;
 	}
 
+	/**
+	 * Saves/updates the given {@link DatabaseObject} to/in local storage.  If the version of the {@link DatabaseObject}
+	 * is managed internally, the save will succeed only if the given {@link DatabaseObject} has never been saved before
+	 * or the saved {@link DatabaseObject} version is the same as the given {@link DatabaseObject} version. If the
+	 * version of the {@link DatabaseObject} is managed externally, the save will succeed only if the given {@link
+	 * DatabaseObject} has never been saved before or the saved {@link DatabaseObject} version is older than the given
+	 * {@link DatabaseObject} version.
+	 *
+	 * @param object The {@link DatabaseObject} to save/update.
+	 * @return The newly saved object, or null, if no save was done.
+	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
+	 * with local storage.
+	 */
 	public T save( final T object ) {
 		final Long id = object.getId();
 		final boolean managedExternally = object.isManagedExternally();
