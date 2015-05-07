@@ -6,11 +6,8 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
-import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Handler;
 import android.os.RemoteException;
 import android.provider.BaseColumns;
 import android.util.Log;
@@ -30,160 +27,11 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Manager<T extends DatabaseObject> {
-	protected static final class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
-		/**
-		 * Retrieves the {@link DatabaseObject}(s) linked to by the given URI, determines what kind of change was made,
-		 * and then informs the given OnChangeListener as appropriate.
-		 */
-		private final class RetrieveDatabaseObjectsAsyncTask extends AsyncTask<Void, Void, List<T>> {
-			/**
-			 * The {@link Manager} to use when parsing {@link Uri}s.
-			 */
-			private final Manager<T> manager;
-
-			/**
-			 * Whether notifications should only be done for URIs containing IDs.
-			 */
-			private final boolean notifyStrictlyForDescendants;
-
-			/**
-			 * The {@link OnChangeListener} to inform about what kind of change has been made.
-			 */
-			private final OnChangeListener<T> onChangeListener;
-
-			/**
-			 * The {@link Uri} of the changed content.
-			 */
-			private final Uri uri;
-
-			/**
-			 * Creates a {@link RetrieveDatabaseObjectsAsyncTask} object.
-			 *
-			 * @param manager The {@link Manager} to use when parsing {@link Uri}s.
-			 * @param notifyStrictlyForDescendants Whether notifications should only be done for URIs containing IDs.
-			 * @param onChangeListener The {@link OnChangeListener} to inform about what kind of change has been made.
-			 * @param uri The {@link Uri} of the changed content.
-			 */
-			public RetrieveDatabaseObjectsAsyncTask( final Manager<T> manager,
-					final boolean notifyStrictlyForDescendants, final OnChangeListener<T> onChangeListener,
-					final Uri uri ) {
-				this.manager = manager;
-				this.notifyStrictlyForDescendants = notifyStrictlyForDescendants;
-				this.onChangeListener = onChangeListener;
-				this.uri = uri;
-			}
-
-			@Override
-			protected List<T> doInBackground( final Void... params ) {
-				final List<T> databaseObjects = this.manager.get( this.uri );
-
-				return databaseObjects;
-			}
-
-			@Override
-			protected void onPostExecute( final List<T> databaseObjects ) {
-				super.onPostExecute( databaseObjects );
-
-				final Contract contract = this.manager.getContract();
-				final boolean hasId = contract.hasId( uri );
-
-				if ( hasId ) {
-					final long objectId = contract.getId( uri );
-					final boolean noObjectsFound = databaseObjects.isEmpty();
-
-					if ( noObjectsFound ) {
-						this.onChangeListener.onDelete( objectId );
-					} else {
-						final T updatedObject = databaseObjects.get( 0 );
-
-						this.onChangeListener.onChange( updatedObject );
-					}
-				} else {
-					if ( !this.notifyStrictlyForDescendants ) {
-						this.onChangeListener.onChange( databaseObjects );
-					}
-				}
-			}
-		}
-
-		/**
-		 * The {@link OnChangeListener} to call when a change has been made.
-		 */
-		private final OnChangeListener onChangeListener;
-
-		/**
-		 * The {@link Manager} to use when parsing {@link Uri}s.
-		 */
-		private final Manager<T> manager;
-
-		/**
-		 * Whether notifications should only be done for URIs containing IDs.
-		 */
-		private final boolean notifyStrictlyForDescendants;
-
-		/**
-		 * Creates a content observer.
-		 *
-		 * @param handler The handler to run {@link #onChange} on, or null if none.
-		 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-		 * @param manager The {@link Manager} to use when parsing {@link Uri}s.
-		 * @param notifyStrictlyForDescendants Whether notifications should only be done for URIs containing IDs.
-		 */
-		public InterfacingContentObserver( final Handler handler, final OnChangeListener onChangeListener,
-				final Manager<T> manager, final boolean notifyStrictlyForDescendants ) {
-			super( handler );
-
-			this.onChangeListener = onChangeListener;
-			this.manager = manager;
-			this.notifyStrictlyForDescendants = notifyStrictlyForDescendants;
-		}
-
-		@Override
-		public void onChange( final boolean selfChange ) {
-			onChange( selfChange, null );
-		}
-
-		public void onChange( final boolean selfChange, final Uri uri ) {
-			final RetrieveDatabaseObjectsAsyncTask retrieveDatabaseObjectsAsyncTask =
-					new RetrieveDatabaseObjectsAsyncTask( this.manager, this.notifyStrictlyForDescendants,
-							this.onChangeListener, uri );
-
-			retrieveDatabaseObjectsAsyncTask.execute();
-		}
-	}
-
-	public static interface OnChangeListener<T extends DatabaseObject> {
-		/**
-		 * Performs whatever work is necessary in response to some objects in the given collection having changed.
-		 *
-		 * @param allObjects The entire collection of objects, some of which have changed.
-		 */
-		public void onChange( final List<T> allObjects );
-
-		/**
-		 * Performs whatever work is necessary in response to the given object having been created/updated.
-		 *
-		 * @param changedObject The object that has been created/updated.
-		 */
-		public void onChange( final T changedObject );
-
-		/**
-		 * Performs whatever work is necessary in response to the object with the given ID having been deleted.
-		 *
-		 * @param id The ID of the deleted object.
-		 */
-		public void onDelete( final long id );
-	}
-
 	private final ContentResolver contentResolver;
-	private final Handler handler;
-	private final Map<OnChangeListener, ContentObserver> contentObservers =
-			new HashMap<OnChangeListener, ContentObserver>();
 	protected final String packageName;
 
 	protected Manager( final Context context ) {
 		this.contentResolver = context.getContentResolver();
-		this.handler = new Handler( context.getMainLooper() );
 		this.packageName = context.getPackageName();
 	}
 
@@ -716,66 +564,6 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Registers the given {@link OnChangeListener} to listen to changes to either particular {@link DatabaseObject}s or
-	 * to the table as a whole, depending on whether {@code notifyStrictlyForDescendants} is true or false,
-	 * respectively.
-	 *
-	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-	 * @param notifyStrictlyForDescendants Whether notifications should only be delivered for changes to particular
-	 * {@link DatabaseObject}s.  If false, notifications will be only be delivered for changes to the database table in
-	 * general.
-	 */
-	public void registerForChanges( final OnChangeListener onChangeListener,
-			final boolean notifyStrictlyForDescendants ) {
-		this.registerForChanges( null, onChangeListener, notifyStrictlyForDescendants );
-	}
-
-	/**
-	 * Registers the given {@link OnChangeListener} to listen to changes to the given {@link DatabaseObject}.
-	 *
-	 * @param t The {@link DatabaseObject} to listen to changes for.
-	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-	 */
-	public void registerForChanges( final T t, final OnChangeListener onChangeListener ) {
-		final boolean notifyStrictlyForDescendants = false;
-
-		this.registerForChanges( t, onChangeListener, notifyStrictlyForDescendants );
-	}
-
-	/**
-	 * Registers the given {@link OnChangeListener} to listen to changes to either the given {@link DatabaseObject} or,
-	 * if none is specified, changes to any particular {@link DatabaseObject} or to the table as a whole, depending on
-	 * whether {@code notifyStrictlyForDescendants} is true or false, respectively.
-	 *
-	 * @param t The {@link DatabaseObject} to listen to changes for.
-	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-	 * @param notifyStrictlyForDescendants Whether notifications should only be delivered for changes to particular
-	 * {@link DatabaseObject}s.  If false, notifications will be only be delivered for changes to the database table in
-	 * general.
-	 */
-	private void registerForChanges( final T t, final OnChangeListener onChangeListener,
-			final boolean notifyStrictlyForDescendants ) {
-		final String authority = this.getAuthority();
-		final Contract contract = this.getContract();
-		final Uri uri;
-
-		if ( t == null ) {
-			uri = contract.getContentUri( authority );
-		} else {
-			final Long id = t.getId();
-
-			uri = contract.getContentUri( authority, id );
-		}
-
-		final boolean notifyForDescendants = notifyStrictlyForDescendants;
-		final InterfacingContentObserver interfacingContentObserver =
-				new InterfacingContentObserver( this.handler, onChangeListener, this, notifyStrictlyForDescendants );
-
-		this.contentObservers.put( onChangeListener, interfacingContentObserver );
-		this.contentResolver.registerContentObserver( uri, notifyForDescendants, interfacingContentObserver );
-	}
-
-	/**
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
@@ -893,14 +681,5 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 
 		return savedObject;
-	}
-
-	public void unregisterForChanges( final OnChangeListener onChangeListener ) {
-		final ContentObserver contentObserver = this.contentObservers.get( onChangeListener );
-
-		if ( contentObserver != null ) {
-			this.contentResolver.unregisterContentObserver( contentObserver );
-			this.contentObservers.remove( onChangeListener );
-		}
 	}
 }
