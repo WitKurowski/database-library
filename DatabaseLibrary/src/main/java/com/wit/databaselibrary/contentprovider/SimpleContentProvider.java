@@ -24,7 +24,6 @@ import java.util.Map;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	private final List<Contract> contracts;
-	private boolean applyingBatch = false;
 
 	public SimpleContentProvider( final List<Contract> contracts ) {
 		this.contracts = contracts;
@@ -47,40 +46,10 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			throws OperationApplicationException {
 		final List<ContentProviderResult> contentProviderResults = new ArrayList<ContentProviderResult>();
 
-		this.applyingBatch = true;
-
 		for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
 			final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
 
 			contentProviderResults.add( contentProviderResult );
-		}
-
-		this.applyingBatch = false;
-
-		if ( !contentProviderOperations.isEmpty() ) {
-			final Uri uri = contentProviderOperations.get( 0 ).getUri();
-			final List<String> pathSegments = uri.getPathSegments();
-			final Uri baseUri;
-
-			if ( pathSegments.size() == 1 ) {
-				baseUri = uri;
-			} else {
-				final String scheme = uri.getScheme();
-				final String authority = uri.getAuthority();
-				final String rootPathSegment = pathSegments.get( 0 );
-				final Uri.Builder baseUriBuilder = new Uri.Builder();
-
-				baseUriBuilder.scheme( scheme );
-				baseUriBuilder.authority( authority );
-				baseUriBuilder.appendPath( rootPathSegment );
-
-				baseUri = baseUriBuilder.build();
-			}
-
-			final Context context = this.getContext();
-			final ContentResolver contentResolver = context.getContentResolver();
-
-			contentResolver.notifyChange( baseUri, null );
 		}
 
 		return contentProviderResults.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
@@ -96,50 +65,11 @@ public abstract class SimpleContentProvider extends ContentProvider {
 				databaseHelper.getWritableDatabase();
 		final int count =
 				sqLiteDatabase.delete( tableName, selection, selectionArgs );
-		final Context context = this.getContext();
-		final ContentResolver contentResolver = context.getContentResolver();
-
-		contentResolver.notifyChange( uri, null );
-
-		if ( !this.applyingBatch ) {
-			final Contract contract = this.getContract( uri );
-			final Uri rootUri = contract.getContentUri( authority );
-
-			contentResolver.notifyChange( rootUri, null );
-		}
 
 		return count;
 	}
 
 	protected abstract String getAuthority();
-
-	/**
-	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object or object ID.
-	 *
-	 * @param uri The {@link Uri} to try to match.
-	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object or object ID.
-	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object or object
-	 * ID.
-	 */
-	private final Contract getContract( final Uri uri ) throws IllegalArgumentException {
-		final String authority = this.getAuthority();
-		Contract contract = null;
-
-		for ( final Contract currentContract : this.contracts ) {
-			if ( currentContract.uriMatchesObject( uri, authority ) ||
-					currentContract.uriMatchesObjectId( uri, authority ) ) {
-				contract = currentContract;
-			}
-		}
-
-		if ( contract == null ) {
-			throw new IllegalArgumentException( "Unknown URI, \"" + uri +
-					"\". Please ensure that it has been added to the list of Contracts passed into the " +
-					SimpleContentProvider.class.getSimpleName() + " class." );
-		}
-
-		return contract;
-	}
 
 	/**
 	 * Returns the {@link Contract} that successfully matches the given {@link Uri} by object.
@@ -148,7 +78,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object.
 	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object.
 	 */
-	private final Contract getContractByMatchingObject( final Uri uri ) throws IllegalArgumentException {
+	private Contract getContractByMatchingObject( final Uri uri ) throws IllegalArgumentException {
 		final String authority = this.getAuthority();
 		Contract contract = null;
 
@@ -250,13 +180,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 			contentResolver.notifyChange( contentUriWithAppendedId, null );
 
-
-			if ( !this.applyingBatch ) {
-				final Uri rootUri = uri;
-
-				contentResolver.notifyChange( rootUri, null );
-			}
-
 			return contentUriWithAppendedId;
 		} else {
 			throw new SQLException( "Failed to insert row into " + uri );
@@ -319,17 +242,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		final int count =
 				sqLiteDatabase.update( tableName, contentValues, selection,
 						selectionArgs );
-		final Context context = this.getContext();
-		final ContentResolver contentResolver = context.getContentResolver();
-
-		contentResolver.notifyChange( uri, null );
-
-		if ( !this.applyingBatch ) {
-			final Contract contract = this.getContract( uri );
-			final Uri rootUri = contract.getContentUri( authority );
-
-			contentResolver.notifyChange( rootUri, null );
-		}
 
 		return count;
 	}
