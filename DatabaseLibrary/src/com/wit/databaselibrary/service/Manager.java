@@ -113,7 +113,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Deletes the given {@link DatabaseObject}.
 	 *
 	 * @param object The {@link DatabaseObject} to delete.
-	 * @return 1 if the specified {@link DatabaseObject} was deleted, or 0 if it was not deleted.
+	 * @return The number of {@link DatabaseObject}s that were deleted.
 	 */
 	public int delete( final T object ) {
 		final long id = object.getId();
