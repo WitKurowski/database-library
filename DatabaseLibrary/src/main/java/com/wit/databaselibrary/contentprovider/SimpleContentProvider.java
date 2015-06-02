@@ -44,12 +44,24 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	@Override
 	public ContentProviderResult[] applyBatch( final ArrayList<ContentProviderOperation> contentProviderOperations )
 			throws OperationApplicationException {
+		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
+		final SQLiteDatabase sqLiteDatabase =
+				databaseHelper.getWritableDatabase();
+
+		sqLiteDatabase.beginTransaction();
+
 		final List<ContentProviderResult> contentProviderResults = new ArrayList<ContentProviderResult>();
 
-		for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
-			final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
+		try {
+			for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
+				final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
 
-			contentProviderResults.add( contentProviderResult );
+				contentProviderResults.add( contentProviderResult );
+			}
+
+			sqLiteDatabase.setTransactionSuccessful();
+		} finally {
+			sqLiteDatabase.endTransaction();
 		}
 
 		return contentProviderResults.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
