@@ -7,6 +7,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.provider.BaseColumns;
@@ -668,7 +669,21 @@ public abstract class Manager<T extends DatabaseObject> {
 			final T existingObject = this.get( id );
 
 			if ( existingObject == null ) {
-				savedObject = this.performSave( object );
+				T attemptedSaveObject = null;
+
+				try {
+					attemptedSaveObject = this.performSave( object );
+				} catch ( final SQLException sqlException ) {
+					final T justAddedDuplicateObject = this.get( id );
+
+					if ( justAddedDuplicateObject == null ) {
+						throw sqlException;
+					} else {
+						attemptedSaveObject = this.performUpdate( object );
+					}
+				}
+
+				savedObject = attemptedSaveObject;
 			} else {
 				savedObject = this.performUpdate( object );
 			}
