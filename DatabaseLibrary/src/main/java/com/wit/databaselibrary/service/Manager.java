@@ -422,7 +422,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * DatabaseObject}.
 	 *
 	 * @param object The {@link DatabaseObject} to use in the update.
-	 * @return The updated {@link DatabaseObject} from local storage.
+	 * @return The updated {@link DatabaseObject} from local storage or null if no update was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
 	 * with local storage.
 	 */
