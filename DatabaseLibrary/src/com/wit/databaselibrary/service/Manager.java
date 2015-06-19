@@ -583,7 +583,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
 	 * collection.
-	 * @param selection A filter declaring which rows to return, formatted as an SQL WHERE clause (excluding the WHERE
+	 * @param selection A filter declaring which rows to replace, formatted as an SQL WHERE clause (excluding the WHERE
 	 * itself).
 	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in
 	 * the order that they appear in the selection. The values will be bound as Strings.
