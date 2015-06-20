@@ -806,4 +806,40 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		return savedObject;
 	}
+
+	/**
+	 * Updates all objects with the given field values.
+	 *
+	 * @param contentValues The new field values. The key is the column name for the field. A null value will remove an
+	 * existing field value.
+	 * @return The number of objects updated.
+	 */
+	protected final int update( final ContentValues contentValues ) {
+		final String whereClause = null;
+		final List<String> whereArgs = Collections.emptyList();
+		final int numberOfUpdatedObjects = this.update( contentValues, whereClause, whereArgs );
+
+		return numberOfUpdatedObjects;
+	}
+
+	/**
+	 * Updates all objects that match the where clause with the given field values.
+	 *
+	 * @param contentValues The new field values. The key is the column name for the field. A null value will remove an
+	 * existing field value.
+	 * @param whereClause A filter to apply to rows before updating, formatted as an SQL WHERE clause (excluding the
+	 * WHERE itself).
+	 * @param whereArgs The values with which to replace the question marks in the where clause.
+	 * @return The number of objects updated.
+	 */
+	protected final int update( final ContentValues contentValues, final String whereClause,
+			final List<String> whereArgs ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final int numberOfUpdatedObjects = this.contentResolver
+				.update( contentUri, contentValues, whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
+
+		return numberOfUpdatedObjects;
+	}
 }
