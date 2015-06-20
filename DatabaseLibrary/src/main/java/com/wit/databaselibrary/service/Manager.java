@@ -1,6 +1,7 @@
 package com.wit.databaselibrary.service;
 
 import android.content.ContentProviderOperation;
+import android.content.ContentProviderResult;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -37,14 +38,32 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
+	 * Adds and updates the specified objects.
+	 *
+	 * @param objectsToAdd The objects that need to be added.
+	 * @param objectsToUpdate The objects that need to be updated.
+	 * @return The latest version of the objects that have been saved or updated.
+	 * @throws StorageModificationException An add or update operation failed.
+	 */
+	private List<T> apply( final List<T> objectsToAdd, final List<T> objectsToUpdate )
+			throws StorageModificationException {
+		final List<T> objectsToDelete = Collections.emptyList();
+		final List<T> savedObjects = this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
+
+		return savedObjects;
+	}
+
+	/**
 	 * Adds, updates, and deletes the specified objects.
 	 *
 	 * @param objectsToAdd The objects that need to be added.
 	 * @param objectsToUpdate The objects that need to be updated.
 	 * @param objectsToDelete The objects that need to be deleted.
+	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException An add, update, or delete operation failed.
 	 */
-	private void apply( final List<T> objectsToAdd, final List<T> objectsToUpdate, final List<T> objectsToDelete )
+	private List<T> apply( final List<T> objectsToAdd, final List<T> objectsToUpdate,
+			final List<T> objectsToDelete )
 			throws StorageModificationException {
 		final String authority = this.getAuthority();
 		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
@@ -63,15 +82,40 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		contentProviderOperations.addAll( deletedObjectContentProviderOperations );
 
+		final List<Long> ids = new ArrayList<Long>();
+
 		try {
-			this.contentResolver.applyBatch( authority, contentProviderOperations );
+			final ContentProviderResult[] contentProviderResults =
+					this.contentResolver.applyBatch( authority, contentProviderOperations );
+
+			for ( final ContentProviderResult contentProviderResult : contentProviderResults ) {
+				final Uri uri = contentProviderResult.uri;
+
+				if ( uri != null ) {
+					final String idString = uri.getLastPathSegment();
+					final long id = Long.parseLong( idString );
+
+					ids.add( id );
+				}
+			}
 		} catch ( final RemoteException remoteException ) {
 			Log.e( Manager.class.getSimpleName(),
 					"An error happened while attempting to communicate with a remote provider.", remoteException );
 		} catch ( OperationApplicationException operationApplicationException ) {
-			throw new StorageModificationException( "An add, update, or delete operation failed to be applied.",
-					operationApplicationException );
+			final String errorMessage;
+
+			if ( objectsToDelete.isEmpty() ) {
+				errorMessage = "An add or update operation failed to be applied.";
+			} else {
+				errorMessage = "An add, update, or delete operation failed to be applied.";
+			}
+
+			throw new StorageModificationException( errorMessage, operationApplicationException );
 		}
+
+		final List<T> savedObjects = this.get( ids );
+
+		return savedObjects;
 	}
 
 	/**
@@ -212,6 +256,49 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	protected abstract T get( final Cursor cursor );
+
+	public List<T> get( final List<Long> ids ) {
+		final List<T> objects = new ArrayList<T>();
+
+		if ( !ids.isEmpty() ) {
+			final Contract contract = this.getContract();
+			final String authority = this.getAuthority();
+			final Uri contentUri = contract.getContentUri( authority );
+			final List<String> projection = contract.getColumnNames();
+			String selection = BaseColumns._ID + " IN (?)";
+			final List<String> selectionArgs = new ArrayList<String>();
+			final StringBuilder idsString = new StringBuilder();
+
+			idsString.append( "(" );
+
+			for ( final Long id : ids ) {
+				idsString.append( id );
+				idsString.append( ',' );
+			}
+
+			idsString.deleteCharAt( idsString.length() - 1 );
+			idsString.append( ")" );
+
+			selection = selection.replace( "(?)", idsString );
+
+			final Cursor cursor = this.contentResolver
+					.query( contentUri, projection.toArray( new String[ projection.size() ] ),
+							selection,
+							selectionArgs.toArray( new String[ selectionArgs.size() ] ), null );
+
+			if ( cursor != null ) {
+				while ( cursor.moveToNext() ) {
+					final T object = this.get( cursor );
+
+					objects.add( object );
+				}
+
+				cursor.close();
+			}
+		}
+
+		return objects;
+	}
 
 	public T get( final long id ) {
 		final Contract contract = this.getContract();
@@ -633,16 +720,38 @@ public abstract class Manager<T extends DatabaseObject> {
 		this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
 	}
 
-	public List<T> save( final List<T> objects ) {
-		final List<T> savedObjects = new ArrayList<T>();
+	public List<T> save( final List<T> objects ) throws StorageModificationException {
+		final List<T> oldObjects = this.get();
+		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<IdWrapper, T>();
+
+		for ( final T oldObject : oldObjects ) {
+			final IdWrapper oldObjectIdWrapper = this.getId( oldObject );
+
+			oldObjectIdsToSources.put( oldObjectIdWrapper, oldObject );
+		}
+
+		final List<T> objectsToAdd = new ArrayList<T>();
+		final List<T> objectsToUpdate = new ArrayList<T>();
 
 		for ( final T object : objects ) {
-			final T savedObject = this.save( object );
+			final IdWrapper objectIdWrapper = this.getId( object );
+			final boolean objectAlreadyExisted =
+					oldObjectIdsToSources.containsKey( objectIdWrapper );
 
-			if ( savedObject != null ) {
-				savedObjects.add( savedObject );
+			if ( objectAlreadyExisted ) {
+				final Long objectVersion = object.getVersion();
+				final T oldObject = oldObjectIdsToSources.remove( objectIdWrapper );
+				final Long oldObjectVersion = oldObject.getVersion();
+
+				if ( objectVersion > oldObjectVersion ) {
+					objectsToUpdate.add( object );
+				}
+			} else {
+				objectsToAdd.add( object );
 			}
 		}
+
+		final List<T> savedObjects = this.apply( objectsToAdd, objectsToUpdate );
 
 		return savedObjects;
 	}
