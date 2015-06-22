@@ -300,6 +300,16 @@ public abstract class Manager<T extends DatabaseObject> {
 		return objects;
 	}
 
+	public List<T> get( final List<String> projection, final List<Pair<String, Order>> orderBys,
+			final List<String> groupByColumns ) {
+		final String selection = null;
+		final List<String> selectionArgs = Collections.emptyList();
+		final Integer limit = null;
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
+
+		return objects;
+	}
+
 	public T get( final long id ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
@@ -335,34 +345,65 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs ) {
+		final Contract contract = this.getContract();
+		final List<String> projection = contract.getColumnNames();
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
+		final List<String> groupByColumns = Collections.emptyList();
 		final Integer limit = null;
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, limit );
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
 
 		return objects;
 	}
 
-	public List<T> get( final String selection, final List<String> selectionArgs,
-			final int limit ) {
+	public List<T> get( final String selection, final List<String> selectionArgs, final int limit ) {
+		final Contract contract = this.getContract();
+		final List<String> projection = contract.getColumnNames();
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
+		final List<String> groupByColumns = Collections.emptyList();
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
 
 		return objects;
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
 			final List<Pair<String, Order>> orderBys, final int limit ) {
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
+		final Contract contract = this.getContract();
+		final List<String> projection = contract.getColumnNames();
+		final List<String> groupByColumns = Collections.emptyList();
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
 
 		return objects;
 	}
 
-	private List<T> get( final String selection, final List<String> selectionArgs,
-			final List<Pair<String, Order>> orderBys, final Integer limit ) {
+	private List<T> get( final List<String> projection, final String selectionClause, final List<String> selectionArgs,
+			final List<Pair<String, Order>> orderBys, final List<String> groupByColumns,
+			final Integer limit ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
-		final List<String> projection = contract.getColumnNames();
+		final StringBuilder selectionAndGroupByClauseStringBuilder = new StringBuilder();
+
+		if ( selectionClause == null ) {
+			if ( !groupByColumns.isEmpty() ) {
+				selectionAndGroupByClauseStringBuilder.append( "1 = 1" );
+			}
+		} else {
+			selectionAndGroupByClauseStringBuilder.append( selectionClause );
+		}
+
+		if ( !groupByColumns.isEmpty() ) {
+			selectionAndGroupByClauseStringBuilder.append( ") GROUP BY (" );
+
+			for ( final String groupByColumn : groupByColumns ) {
+				if ( groupByColumns.indexOf( groupByColumn ) != 0 ) {
+					selectionAndGroupByClauseStringBuilder.append( ", " );
+				}
+
+				selectionAndGroupByClauseStringBuilder.append( groupByColumn );
+			}
+		}
+
+		final String selectionAndGroupByClause = selectionAndGroupByClauseStringBuilder.toString();
 		StringBuilder sortOrder = new StringBuilder();
 
 		if ( orderBys.isEmpty() ) {
@@ -383,13 +424,9 @@ public abstract class Manager<T extends DatabaseObject> {
 			sortOrder.append( " LIMIT " + limit );
 		}
 
-		final Cursor cursor =
-				this.contentResolver.query(
-						contentUri,
-						projection.toArray( new String[ projection.size() ] ),
-						selection,
-						selectionArgs.toArray( new String[ selectionArgs.size() ] ),
-						sortOrder.toString() );
+		final Cursor cursor = this.contentResolver
+				.query( contentUri, projection.toArray( new String[ projection.size() ] ), selectionAndGroupByClause,
+						selectionArgs.toArray( new String[ selectionArgs.size() ] ), sortOrder.toString() );
 		final List<T> objects = new ArrayList<T>();
 
 		if ( cursor != null ) {
