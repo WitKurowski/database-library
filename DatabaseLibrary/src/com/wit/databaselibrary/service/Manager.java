@@ -693,13 +693,15 @@ public abstract class Manager<T extends DatabaseObject> {
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
 	 * collection.
+	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public void replace( final List<T> replacementObjects ) throws StorageModificationException {
+	public List<T> replace( final List<T> replacementObjects ) throws StorageModificationException {
 		final String selection = null;
 		final List<String> selectionArgs = Collections.emptyList();
+		final List<T> objectsChanged = this.replace( replacementObjects, selection, selectionArgs );
 
-		this.replace( replacementObjects, selection, selectionArgs );
+		return objectsChanged;
 	}
 
 	/**
@@ -711,9 +713,10 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * itself).
 	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in
 	 * the order that they appear in the selection. The values will be bound as Strings.
+	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public void replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
+	public List<T> replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
 			throws StorageModificationException {
 		final List<T> oldObjects;
 
@@ -754,7 +757,9 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		objectsToDelete.addAll( oldObjectIdsToSources.values() );
 
-		this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
+		final List<T> objectsChanged = this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
+
+		return objectsChanged;
 	}
 
 	public List<T> save( final List<T> objects ) throws StorageModificationException {
