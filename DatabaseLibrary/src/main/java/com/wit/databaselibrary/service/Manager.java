@@ -19,8 +19,8 @@ import com.wit.databaselibrary.contentprovider.StorageModificationException;
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
 import com.wit.databaselibrary.model.Order;
-import com.wit.databaselibrary.model.id.IdWrapper;
-import com.wit.databaselibrary.model.id.SimpleIdWrapper;
+
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -116,6 +116,44 @@ public abstract class Manager<T extends DatabaseObject> {
 		final List<T> savedObjects = this.get( ids );
 
 		return savedObjects;
+	}
+
+	protected Triple<List<T>, List<T>, List<T>> categorize( final List<T> existingObjects, final List<T> newObjects ) {
+		final Map<Long, T> existingObjectIdsToSources = new HashMap<Long, T>();
+
+		for ( final T existingObject : existingObjects ) {
+			final Long existingObjectId = existingObject.getId();
+
+			existingObjectIdsToSources.put( existingObjectId, existingObject );
+		}
+
+		final List<T> objectsToAdd = new ArrayList<T>();
+		final List<T> objectsToUpdate = new ArrayList<T>();
+		final List<T> objectsNotIncluded = new ArrayList<T>();
+
+		for ( final T newObject : newObjects ) {
+			final Long newObjectId = newObject.getId();
+			final boolean objectAlreadyExisted = existingObjectIdsToSources.containsKey( newObjectId );
+
+			if ( objectAlreadyExisted ) {
+				final Long newObjectVersion = newObject.getVersion();
+				final T existingObject = existingObjectIdsToSources.remove( newObjectId );
+				final Long existingObjectVersion = existingObject.getVersion();
+
+				if ( newObjectVersion > existingObjectVersion ) {
+					objectsToUpdate.add( newObject );
+				}
+			} else {
+				objectsToAdd.add( newObject );
+			}
+		}
+
+		objectsNotIncluded.addAll( existingObjectIdsToSources.values() );
+
+		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
+				Triple.of( objectsToAdd, objectsToUpdate, objectsNotIncluded );
+
+		return objectsToAddUpdateAndDeleteTriple;
 	}
 
 	/**
@@ -522,12 +560,6 @@ public abstract class Manager<T extends DatabaseObject> {
 		return count;
 	}
 
-	protected IdWrapper getId( final T object ) {
-		final IdWrapper idWrapper = new SimpleIdWrapper( object.getId() );
-
-		return idWrapper;
-	}
-
 	private T performSave( final T object ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
@@ -718,81 +750,30 @@ public abstract class Manager<T extends DatabaseObject> {
 	 */
 	public List<T> replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
 			throws StorageModificationException {
-		final List<T> oldObjects;
+		final List<T> existingObjects;
 
 		if ( selection == null ) {
-			oldObjects = this.get();
+			existingObjects = this.get();
 		} else {
-			oldObjects = this.get( selection, selectionArgs );
+			existingObjects = this.get( selection, selectionArgs );
 		}
 
-		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<IdWrapper, T>();
-
-		for ( final T oldObject : oldObjects ) {
-			final IdWrapper oldObjectIdWrapper = this.getId( oldObject );
-
-			oldObjectIdsToSources.put( oldObjectIdWrapper, oldObject );
-		}
-
-		final List<T> objectsToAdd = new ArrayList<T>();
-		final List<T> objectsToUpdate = new ArrayList<T>();
-		final List<T> objectsToDelete = new ArrayList<T>();
-
-		for ( final T replacementObject : replacementObjects ) {
-			final IdWrapper replacementObjectIdWrapper = this.getId( replacementObject );
-			final boolean objectAlreadyExisted = oldObjectIdsToSources.containsKey( replacementObjectIdWrapper );
-
-			if ( objectAlreadyExisted ) {
-				final Long replacementObjectVersion = replacementObject.getVersion();
-				final T oldObject = oldObjectIdsToSources.remove( replacementObjectIdWrapper );
-				final Long oldObjectVersion = oldObject.getVersion();
-
-				if ( replacementObjectVersion > oldObjectVersion ) {
-					objectsToUpdate.add( replacementObject );
-				}
-			} else {
-				objectsToAdd.add( replacementObject );
-			}
-		}
-
-		objectsToDelete.addAll( oldObjectIdsToSources.values() );
-
+		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
+				this.categorize( existingObjects, replacementObjects );
+		final List<T> objectsToAdd = objectsToAddUpdateAndDeleteTriple.getLeft();
+		final List<T> objectsToUpdate = objectsToAddUpdateAndDeleteTriple.getMiddle();
+		final List<T> objectsToDelete = objectsToAddUpdateAndDeleteTriple.getRight();
 		final List<T> objectsChanged = this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
 
 		return objectsChanged;
 	}
 
 	public List<T> save( final List<T> objects ) throws StorageModificationException {
-		final List<T> oldObjects = this.get();
-		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<IdWrapper, T>();
-
-		for ( final T oldObject : oldObjects ) {
-			final IdWrapper oldObjectIdWrapper = this.getId( oldObject );
-
-			oldObjectIdsToSources.put( oldObjectIdWrapper, oldObject );
-		}
-
-		final List<T> objectsToAdd = new ArrayList<T>();
-		final List<T> objectsToUpdate = new ArrayList<T>();
-
-		for ( final T object : objects ) {
-			final IdWrapper objectIdWrapper = this.getId( object );
-			final boolean objectAlreadyExisted =
-					oldObjectIdsToSources.containsKey( objectIdWrapper );
-
-			if ( objectAlreadyExisted ) {
-				final Long objectVersion = object.getVersion();
-				final T oldObject = oldObjectIdsToSources.remove( objectIdWrapper );
-				final Long oldObjectVersion = oldObject.getVersion();
-
-				if ( objectVersion > oldObjectVersion ) {
-					objectsToUpdate.add( object );
-				}
-			} else {
-				objectsToAdd.add( object );
-			}
-		}
-
+		final List<T> existingObjects = this.get();
+		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
+				this.categorize( existingObjects, objects );
+		final List<T> objectsToAdd = objectsToAddUpdateAndDeleteTriple.getLeft();
+		final List<T> objectsToUpdate = objectsToAddUpdateAndDeleteTriple.getMiddle();
 		final List<T> savedObjects = this.apply( objectsToAdd, objectsToUpdate );
 
 		return savedObjects;
