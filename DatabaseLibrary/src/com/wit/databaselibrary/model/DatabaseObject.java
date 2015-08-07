@@ -50,11 +50,20 @@ public class DatabaseObject {
 	}
 
 	/**
-	 * Returns whether this object and its ID are managed externally.
+	 * Returns whether this object's ID is managed externally.
 	 *
-	 * @return Whether this object and its ID are managed externally.
+	 * @return Whether this object's ID is managed externally.
 	 */
-	public boolean isManagedExternally() {
+	public boolean isIdManagedExternally() {
+		return false;
+	}
+
+	/**
+	 * Returns whether this object's version number is managed externally.
+	 *
+	 * @return Whether this object's version number is managed externally.
+	 */
+	public boolean isVersionManagedExternally() {
 		return false;
 	}
 
