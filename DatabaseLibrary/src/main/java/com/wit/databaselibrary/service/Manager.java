@@ -586,14 +586,17 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final long id = object.getId();
-		final boolean managedExternally = object.isManagedExternally();
-		final String whereClause;
+		final StringBuilder whereClauseBuilder = new StringBuilder();
 		final List<String> whereArgs = new ArrayList<String>();
 
-		if ( managedExternally ) {
-			whereClause = BaseColumns._ID + " = ? AND " + Contract.Columns.VERSION + " < ?";
+		whereClauseBuilder.append( BaseColumns._ID + " = ?" );
+		whereArgs.add( String.valueOf( id ) );
 
-			whereArgs.add( String.valueOf( id ) );
+		final boolean versionManagedExternally = object.isVersionManagedExternally();
+
+		if ( versionManagedExternally ) {
+			whereClauseBuilder.append( " AND " + Contract.Columns.VERSION + " < ?" );
+
 			whereArgs.add( String.valueOf( object.getVersion() ) );
 		} else {
 			final T savedObject = this.get( id );
@@ -607,9 +610,8 @@ public abstract class Manager<T extends DatabaseObject> {
 								newObjectVersion + "'." );
 			}
 
-			whereClause = BaseColumns._ID + " = ? AND " + Contract.Columns.VERSION + " = ?";
+			whereClauseBuilder.append( " AND " + Contract.Columns.VERSION + " = ?" );
 
-			whereArgs.add( String.valueOf( id ) );
 			whereArgs.add( String.valueOf( savedObjectVersion ) );
 
 			object.setVersion( newObjectVersion + 1 );
@@ -617,6 +619,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		final Uri contentUri = contract.getContentUri( authority, id );
 		final ContentValues contentValues = this.generateContentValues( object );
+		final String whereClause = whereClauseBuilder.toString();
 		final int i = this.contentResolver.update( contentUri, contentValues,
 				whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
 		final T savedObject;
@@ -793,11 +796,11 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * with local storage.
 	 */
 	public T save( final T object ) {
-		final Long id = object.getId();
-		final boolean managedExternally = object.isManagedExternally();
+		final boolean idManagedExternally = object.isIdManagedExternally();
 		final T savedObject;
 
-		if ( managedExternally ) {
+		if ( idManagedExternally ) {
+			final long id = object.getId();
 			final T existingObject = this.get( id );
 
 			if ( existingObject == null ) {
@@ -820,6 +823,8 @@ public abstract class Manager<T extends DatabaseObject> {
 				savedObject = this.performUpdate( object );
 			}
 		} else {
+			final Long id = object.getId();
+
 			if ( id == null ) {
 				savedObject = this.performSave( object );
 			} else {
