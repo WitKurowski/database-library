@@ -568,7 +568,13 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Uri uri =
 				this.contentResolver.insert( contentUri, contentValues );
 		final List<T> savedObjects = this.get( uri );
-		final T savedObject = savedObjects.get( 0 );
+		final T savedObject;
+
+		if ( savedObjects.isEmpty() ) {
+			savedObject = null;
+		} else {
+			savedObject = savedObjects.get( 0 );
+		}
 
 		return savedObject;
 	}
@@ -791,7 +797,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * {@link DatabaseObject} version.
 	 *
 	 * @param object The {@link DatabaseObject} to save/update.
-	 * @return The newly saved object, or null, if no save was done.
+	 * @return The newly saved object, or {@code null} if no save was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
 	 * with local storage.
 	 */
