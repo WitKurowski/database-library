@@ -560,6 +560,8 @@ public abstract class Manager<T extends DatabaseObject> {
 		return count;
 	}
 
+	protected abstract T merge( final T oldObject, final long newId );
+
 	private T performSave( final T object ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
@@ -567,16 +569,11 @@ public abstract class Manager<T extends DatabaseObject> {
 		final ContentValues contentValues = this.generateContentValues( object );
 		final Uri uri =
 				this.contentResolver.insert( contentUri, contentValues );
-		final List<T> savedObjects = this.get( uri );
-		final T savedObject;
+		final String idString = uri.getLastPathSegment();
+		final long id = Long.parseLong( idString );
+		final T mergedObject = this.merge( object, id );
 
-		if ( savedObjects.isEmpty() ) {
-			savedObject = null;
-		} else {
-			savedObject = savedObjects.get( 0 );
-		}
-
-		return savedObject;
+		return mergedObject;
 	}
 
 	/**
