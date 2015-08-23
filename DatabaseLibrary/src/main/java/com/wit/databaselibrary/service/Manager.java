@@ -1,16 +1,15 @@
 package com.wit.databaselibrary.service;
 
 import android.content.ContentProviderOperation;
+import android.content.ContentProviderResult;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.OperationApplicationException;
-import android.database.ContentObserver;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Handler;
 import android.os.RemoteException;
 import android.provider.BaseColumns;
 import android.util.Log;
@@ -20,8 +19,8 @@ import com.wit.databaselibrary.contentprovider.StorageModificationException;
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 import com.wit.databaselibrary.model.DatabaseObject;
 import com.wit.databaselibrary.model.Order;
-import com.wit.databaselibrary.model.id.IdWrapper;
-import com.wit.databaselibrary.model.id.SimpleIdWrapper;
+
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,161 +29,28 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Manager<T extends DatabaseObject> {
-	protected static final class InterfacingContentObserver<T extends DatabaseObject> extends ContentObserver {
-		/**
-		 * Retrieves the {@link DatabaseObject}(s) linked to by the given URI, determines what kind of change was made,
-		 * and then informs the given OnChangeListener as appropriate.
-		 */
-		private final class RetrieveDatabaseObjectsAsyncTask extends AsyncTask<Void, Void, List<T>> {
-			/**
-			 * The {@link Manager} to use when parsing {@link Uri}s.
-			 */
-			private final Manager<T> manager;
-
-			/**
-			 * Whether notifications should only be done for URIs containing IDs.
-			 */
-			private final boolean notifyStrictlyForDescendants;
-
-			/**
-			 * The {@link OnChangeListener} to inform about what kind of change has been made.
-			 */
-			private final OnChangeListener<T> onChangeListener;
-
-			/**
-			 * The {@link Uri} of the changed content.
-			 */
-			private final Uri uri;
-
-			/**
-			 * Creates a {@link RetrieveDatabaseObjectsAsyncTask} object.
-			 *
-			 * @param manager The {@link Manager} to use when parsing {@link Uri}s.
-			 * @param notifyStrictlyForDescendants Whether notifications should only be done for URIs containing IDs.
-			 * @param onChangeListener The {@link OnChangeListener} to inform about what kind of change has been made.
-			 * @param uri The {@link Uri} of the changed content.
-			 */
-			public RetrieveDatabaseObjectsAsyncTask( final Manager<T> manager,
-					final boolean notifyStrictlyForDescendants, final OnChangeListener<T> onChangeListener,
-					final Uri uri ) {
-				this.manager = manager;
-				this.notifyStrictlyForDescendants = notifyStrictlyForDescendants;
-				this.onChangeListener = onChangeListener;
-				this.uri = uri;
-			}
-
-			@Override
-			protected List<T> doInBackground( final Void... params ) {
-				final List<T> databaseObjects = this.manager.get( this.uri );
-
-				return databaseObjects;
-			}
-
-			@Override
-			protected void onPostExecute( final List<T> databaseObjects ) {
-				super.onPostExecute( databaseObjects );
-
-				final Contract contract = this.manager.getContract();
-				final boolean hasId = contract.hasId( uri );
-
-				if ( hasId ) {
-					final long objectId = contract.getId( uri );
-					final boolean noObjectsFound = databaseObjects.isEmpty();
-
-					if ( noObjectsFound ) {
-						this.onChangeListener.onDelete( objectId );
-					} else {
-						final T updatedObject = databaseObjects.get( 0 );
-
-						this.onChangeListener.onChange( updatedObject );
-					}
-				} else {
-					if ( !this.notifyStrictlyForDescendants ) {
-						this.onChangeListener.onChange( databaseObjects );
-					}
-				}
-			}
-		}
-
-		/**
-		 * The {@link OnChangeListener} to call when a change has been made.
-		 */
-		private final OnChangeListener onChangeListener;
-
-		/**
-		 * The {@link Manager} to use when parsing {@link Uri}s.
-		 */
-		private final Manager<T> manager;
-
-		/**
-		 * Whether notifications should only be done for URIs containing IDs.
-		 */
-		private final boolean notifyStrictlyForDescendants;
-
-		/**
-		 * Creates a content observer.
-		 *
-		 * @param handler The handler to run {@link #onChange} on, or null if none.
-		 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-		 * @param manager The {@link Manager} to use when parsing {@link Uri}s.
-		 * @param notifyStrictlyForDescendants Whether notifications should only be done for URIs containing IDs.
-		 */
-		public InterfacingContentObserver( final Handler handler, final OnChangeListener onChangeListener,
-				final Manager<T> manager, final boolean notifyStrictlyForDescendants ) {
-			super( handler );
-
-			this.onChangeListener = onChangeListener;
-			this.manager = manager;
-			this.notifyStrictlyForDescendants = notifyStrictlyForDescendants;
-		}
-
-		@Override
-		public void onChange( final boolean selfChange ) {
-			onChange( selfChange, null );
-		}
-
-		public void onChange( final boolean selfChange, final Uri uri ) {
-			final RetrieveDatabaseObjectsAsyncTask retrieveDatabaseObjectsAsyncTask =
-					new RetrieveDatabaseObjectsAsyncTask( this.manager, this.notifyStrictlyForDescendants,
-							this.onChangeListener, uri );
-
-			retrieveDatabaseObjectsAsyncTask.execute();
-		}
-	}
-
-	public static interface OnChangeListener<T extends DatabaseObject> {
-		/**
-		 * Performs whatever work is necessary in response to some objects in the given collection having changed.
-		 *
-		 * @param allObjects The entire collection of objects, some of which have changed.
-		 */
-		public void onChange( final List<T> allObjects );
-
-		/**
-		 * Performs whatever work is necessary in response to the given object having been created/updated.
-		 *
-		 * @param changedObject The object that has been created/updated.
-		 */
-		public void onChange( final T changedObject );
-
-		/**
-		 * Performs whatever work is necessary in response to the object with the given ID having been deleted.
-		 *
-		 * @param id The ID of the deleted object.
-		 */
-		public void onDelete( final long id );
-	}
-
 	private final ContentResolver contentResolver;
-	private final Handler handler;
-	private final Map<OnChangeListener, ContentObserver> contentObservers =
-			new HashMap<OnChangeListener, ContentObserver>();
 	protected final String packageName;
 
 	protected Manager( final Context context ) {
 		this.contentResolver = context.getContentResolver();
-		this.handler = new Handler( context.getMainLooper() );
 		this.packageName = context.getPackageName();
+	}
+
+	/**
+	 * Adds and updates the specified objects.
+	 *
+	 * @param objectsToAdd The objects that need to be added.
+	 * @param objectsToUpdate The objects that need to be updated.
+	 * @return The latest version of the objects that have been saved or updated.
+	 * @throws StorageModificationException An add or update operation failed.
+	 */
+	private List<T> apply( final List<T> objectsToAdd, final List<T> objectsToUpdate )
+			throws StorageModificationException {
+		final List<T> objectsToDelete = Collections.emptyList();
+		final List<T> savedObjects = this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
+
+		return savedObjects;
 	}
 
 	/**
@@ -193,9 +59,11 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @param objectsToAdd The objects that need to be added.
 	 * @param objectsToUpdate The objects that need to be updated.
 	 * @param objectsToDelete The objects that need to be deleted.
+	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException An add, update, or delete operation failed.
 	 */
-	private void apply( final List<T> objectsToAdd, final List<T> objectsToUpdate, final List<T> objectsToDelete )
+	private List<T> apply( final List<T> objectsToAdd, final List<T> objectsToUpdate,
+			final List<T> objectsToDelete )
 			throws StorageModificationException {
 		final String authority = this.getAuthority();
 		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>();
@@ -214,15 +82,78 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		contentProviderOperations.addAll( deletedObjectContentProviderOperations );
 
+		final List<Long> ids = new ArrayList<Long>();
+
 		try {
-			this.contentResolver.applyBatch( authority, contentProviderOperations );
+			final ContentProviderResult[] contentProviderResults =
+					this.contentResolver.applyBatch( authority, contentProviderOperations );
+
+			for ( final ContentProviderResult contentProviderResult : contentProviderResults ) {
+				final Uri uri = contentProviderResult.uri;
+
+				if ( uri != null ) {
+					final String idString = uri.getLastPathSegment();
+					final long id = Long.parseLong( idString );
+
+					ids.add( id );
+				}
+			}
 		} catch ( final RemoteException remoteException ) {
 			Log.e( Manager.class.getSimpleName(),
 					"An error happened while attempting to communicate with a remote provider.", remoteException );
 		} catch ( OperationApplicationException operationApplicationException ) {
-			throw new StorageModificationException( "An add, update, or delete operation failed to be applied.",
-					operationApplicationException );
+			final String errorMessage;
+
+			if ( objectsToDelete.isEmpty() ) {
+				errorMessage = "An add or update operation failed to be applied.";
+			} else {
+				errorMessage = "An add, update, or delete operation failed to be applied.";
+			}
+
+			throw new StorageModificationException( errorMessage, operationApplicationException );
 		}
+
+		final List<T> savedObjects = this.get( ids );
+
+		return savedObjects;
+	}
+
+	protected Triple<List<T>, List<T>, List<T>> categorize( final List<T> existingObjects, final List<T> newObjects ) {
+		final Map<Long, T> existingObjectIdsToSources = new HashMap<Long, T>();
+
+		for ( final T existingObject : existingObjects ) {
+			final Long existingObjectId = existingObject.getId();
+
+			existingObjectIdsToSources.put( existingObjectId, existingObject );
+		}
+
+		final List<T> objectsToAdd = new ArrayList<T>();
+		final List<T> objectsToUpdate = new ArrayList<T>();
+		final List<T> objectsNotIncluded = new ArrayList<T>();
+
+		for ( final T newObject : newObjects ) {
+			final Long newObjectId = newObject.getId();
+			final boolean objectAlreadyExisted = existingObjectIdsToSources.containsKey( newObjectId );
+
+			if ( objectAlreadyExisted ) {
+				final Long newObjectVersion = newObject.getVersion();
+				final T existingObject = existingObjectIdsToSources.remove( newObjectId );
+				final Long existingObjectVersion = existingObject.getVersion();
+
+				if ( newObjectVersion > existingObjectVersion ) {
+					objectsToUpdate.add( newObject );
+				}
+			} else {
+				objectsToAdd.add( newObject );
+			}
+		}
+
+		objectsNotIncluded.addAll( existingObjectIdsToSources.values() );
+
+		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
+				Triple.of( objectsToAdd, objectsToUpdate, objectsNotIncluded );
+
+		return objectsToAddUpdateAndDeleteTriple;
 	}
 
 	/**
@@ -265,7 +196,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Deletes the given {@link DatabaseObject}.
 	 *
 	 * @param object The {@link DatabaseObject} to delete.
-	 * @return 1 if the specified {@link DatabaseObject} was deleted, or 0 if it was not deleted.
+	 * @return The number of {@link DatabaseObject}s that were deleted.
 	 */
 	public int delete( final T object ) {
 		final long id = object.getId();
@@ -364,6 +295,59 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract T get( final Cursor cursor );
 
+	public List<T> get( final List<Long> ids ) {
+		final List<T> objects = new ArrayList<T>();
+
+		if ( !ids.isEmpty() ) {
+			final Contract contract = this.getContract();
+			final String authority = this.getAuthority();
+			final Uri contentUri = contract.getContentUri( authority );
+			final List<String> projection = contract.getColumnNames();
+			String selection = BaseColumns._ID + " IN (?)";
+			final List<String> selectionArgs = new ArrayList<String>();
+			final StringBuilder idsString = new StringBuilder();
+
+			idsString.append( "(" );
+
+			for ( final Long id : ids ) {
+				idsString.append( id );
+				idsString.append( ',' );
+			}
+
+			idsString.deleteCharAt( idsString.length() - 1 );
+			idsString.append( ")" );
+
+			selection = selection.replace( "(?)", idsString );
+
+			final Cursor cursor = this.contentResolver
+					.query( contentUri, projection.toArray( new String[ projection.size() ] ),
+							selection,
+							selectionArgs.toArray( new String[ selectionArgs.size() ] ), null );
+
+			if ( cursor != null ) {
+				while ( cursor.moveToNext() ) {
+					final T object = this.get( cursor );
+
+					objects.add( object );
+				}
+
+				cursor.close();
+			}
+		}
+
+		return objects;
+	}
+
+	public List<T> get( final List<String> projection, final List<Pair<String, Order>> orderBys,
+			final List<String> groupByColumns ) {
+		final String selection = null;
+		final List<String> selectionArgs = Collections.emptyList();
+		final Integer limit = null;
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
+
+		return objects;
+	}
+
 	public T get( final long id ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
@@ -399,34 +383,65 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs ) {
+		final Contract contract = this.getContract();
+		final List<String> projection = contract.getColumnNames();
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
+		final List<String> groupByColumns = Collections.emptyList();
 		final Integer limit = null;
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, limit );
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
 
 		return objects;
 	}
 
-	public List<T> get( final String selection, final List<String> selectionArgs,
-			final int limit ) {
+	public List<T> get( final String selection, final List<String> selectionArgs, final int limit ) {
+		final Contract contract = this.getContract();
+		final List<String> projection = contract.getColumnNames();
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
+		final List<String> groupByColumns = Collections.emptyList();
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
 
 		return objects;
 	}
 
 	public List<T> get( final String selection, final List<String> selectionArgs,
 			final List<Pair<String, Order>> orderBys, final int limit ) {
-		final List<T> objects = this.get( selection, selectionArgs, orderBys, (Integer) limit );
+		final Contract contract = this.getContract();
+		final List<String> projection = contract.getColumnNames();
+		final List<String> groupByColumns = Collections.emptyList();
+		final List<T> objects = this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
 
 		return objects;
 	}
 
-	private List<T> get( final String selection, final List<String> selectionArgs,
-			final List<Pair<String, Order>> orderBys, final Integer limit ) {
+	private List<T> get( final List<String> projection, final String selectionClause, final List<String> selectionArgs,
+			final List<Pair<String, Order>> orderBys, final List<String> groupByColumns,
+			final Integer limit ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
-		final List<String> projection = contract.getColumnNames();
+		final StringBuilder selectionAndGroupByClauseStringBuilder = new StringBuilder();
+
+		if ( selectionClause == null ) {
+			if ( !groupByColumns.isEmpty() ) {
+				selectionAndGroupByClauseStringBuilder.append( "1 = 1" );
+			}
+		} else {
+			selectionAndGroupByClauseStringBuilder.append( selectionClause );
+		}
+
+		if ( !groupByColumns.isEmpty() ) {
+			selectionAndGroupByClauseStringBuilder.append( ") GROUP BY (" );
+
+			for ( final String groupByColumn : groupByColumns ) {
+				if ( groupByColumns.indexOf( groupByColumn ) != 0 ) {
+					selectionAndGroupByClauseStringBuilder.append( ", " );
+				}
+
+				selectionAndGroupByClauseStringBuilder.append( groupByColumn );
+			}
+		}
+
+		final String selectionAndGroupByClause = selectionAndGroupByClauseStringBuilder.toString();
 		StringBuilder sortOrder = new StringBuilder();
 
 		if ( orderBys.isEmpty() ) {
@@ -447,13 +462,9 @@ public abstract class Manager<T extends DatabaseObject> {
 			sortOrder.append( " LIMIT " + limit );
 		}
 
-		final Cursor cursor =
-				this.contentResolver.query(
-						contentUri,
-						projection.toArray( new String[ projection.size() ] ),
-						selection,
-						selectionArgs.toArray( new String[ selectionArgs.size() ] ),
-						sortOrder.toString() );
+		final Cursor cursor = this.contentResolver
+				.query( contentUri, projection.toArray( new String[ projection.size() ] ), selectionAndGroupByClause,
+						selectionArgs.toArray( new String[ selectionArgs.size() ] ), sortOrder.toString() );
 		final List<T> objects = new ArrayList<T>();
 
 		if ( cursor != null ) {
@@ -549,11 +560,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		return count;
 	}
 
-	protected IdWrapper getId( final T object ) {
-		final IdWrapper idWrapper = new SimpleIdWrapper( object.getId() );
-
-		return idWrapper;
-	}
+	protected abstract T merge( final T oldObject, final long newId );
 
 	private T performSave( final T object ) {
 		final Contract contract = this.getContract();
@@ -562,10 +569,11 @@ public abstract class Manager<T extends DatabaseObject> {
 		final ContentValues contentValues = this.generateContentValues( object );
 		final Uri uri =
 				this.contentResolver.insert( contentUri, contentValues );
-		final List<T> savedObjects = this.get( uri );
-		final T savedObject = savedObjects.get( 0 );
+		final String idString = uri.getLastPathSegment();
+		final long id = Long.parseLong( idString );
+		final T mergedObject = this.merge( object, id );
 
-		return savedObject;
+		return mergedObject;
 	}
 
 	/**
@@ -573,7 +581,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * DatabaseObject}.
 	 *
 	 * @param object The {@link DatabaseObject} to use in the update.
-	 * @return The updated {@link DatabaseObject} from local storage.
+	 * @return The updated {@link DatabaseObject} from local storage or null if no update was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
 	 * with local storage.
 	 */
@@ -581,14 +589,17 @@ public abstract class Manager<T extends DatabaseObject> {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final long id = object.getId();
-		final boolean managedExternally = object.isManagedExternally();
-		final String whereClause;
+		final StringBuilder whereClauseBuilder = new StringBuilder();
 		final List<String> whereArgs = new ArrayList<String>();
 
-		if ( managedExternally ) {
-			whereClause = BaseColumns._ID + " = ? AND " + Contract.Columns.VERSION + " < ?";
+		whereClauseBuilder.append( BaseColumns._ID + " = ?" );
+		whereArgs.add( String.valueOf( id ) );
 
-			whereArgs.add( String.valueOf( id ) );
+		final boolean versionManagedExternally = object.isVersionManagedExternally();
+
+		if ( versionManagedExternally ) {
+			whereClauseBuilder.append( " AND " + Contract.Columns.VERSION + " < ?" );
+
 			whereArgs.add( String.valueOf( object.getVersion() ) );
 		} else {
 			final T savedObject = this.get( id );
@@ -602,9 +613,8 @@ public abstract class Manager<T extends DatabaseObject> {
 								newObjectVersion + "'." );
 			}
 
-			whereClause = BaseColumns._ID + " = ? AND " + Contract.Columns.VERSION + " = ?";
+			whereClauseBuilder.append( " AND " + Contract.Columns.VERSION + " = ?" );
 
-			whereArgs.add( String.valueOf( id ) );
 			whereArgs.add( String.valueOf( savedObjectVersion ) );
 
 			object.setVersion( newObjectVersion + 1 );
@@ -612,6 +622,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		final Uri contentUri = contract.getContentUri( authority, id );
 		final ContentValues contentValues = this.generateContentValues( object );
+		final String whereClause = whereClauseBuilder.toString();
 		final int i = this.contentResolver.update( contentUri, contentValues,
 				whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
 		final T savedObject;
@@ -716,77 +727,19 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Registers the given {@link OnChangeListener} to listen to changes to either particular {@link DatabaseObject}s or
-	 * to the table as a whole, depending on whether {@code notifyStrictlyForDescendants} is true or false,
-	 * respectively.
-	 *
-	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-	 * @param notifyStrictlyForDescendants Whether notifications should only be delivered for changes to particular
-	 * {@link DatabaseObject}s.  If false, notifications will be only be delivered for changes to the database table in
-	 * general.
-	 */
-	public void registerForChanges( final OnChangeListener onChangeListener,
-			final boolean notifyStrictlyForDescendants ) {
-		this.registerForChanges( null, onChangeListener, notifyStrictlyForDescendants );
-	}
-
-	/**
-	 * Registers the given {@link OnChangeListener} to listen to changes to the given {@link DatabaseObject}.
-	 *
-	 * @param t The {@link DatabaseObject} to listen to changes for.
-	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-	 */
-	public void registerForChanges( final T t, final OnChangeListener onChangeListener ) {
-		final boolean notifyStrictlyForDescendants = false;
-
-		this.registerForChanges( t, onChangeListener, notifyStrictlyForDescendants );
-	}
-
-	/**
-	 * Registers the given {@link OnChangeListener} to listen to changes to either the given {@link DatabaseObject} or,
-	 * if none is specified, changes to any particular {@link DatabaseObject} or to the table as a whole, depending on
-	 * whether {@code notifyStrictlyForDescendants} is true or false, respectively.
-	 *
-	 * @param t The {@link DatabaseObject} to listen to changes for.
-	 * @param onChangeListener The {@link OnChangeListener} to call when a change has been made.
-	 * @param notifyStrictlyForDescendants Whether notifications should only be delivered for changes to particular
-	 * {@link DatabaseObject}s.  If false, notifications will be only be delivered for changes to the database table in
-	 * general.
-	 */
-	private void registerForChanges( final T t, final OnChangeListener onChangeListener,
-			final boolean notifyStrictlyForDescendants ) {
-		final String authority = this.getAuthority();
-		final Contract contract = this.getContract();
-		final Uri uri;
-
-		if ( t == null ) {
-			uri = contract.getContentUri( authority );
-		} else {
-			final Long id = t.getId();
-
-			uri = contract.getContentUri( authority, id );
-		}
-
-		final boolean notifyForDescendants = notifyStrictlyForDescendants;
-		final InterfacingContentObserver interfacingContentObserver =
-				new InterfacingContentObserver( this.handler, onChangeListener, this, notifyStrictlyForDescendants );
-
-		this.contentObservers.put( onChangeListener, interfacingContentObserver );
-		this.contentResolver.registerContentObserver( uri, notifyForDescendants, interfacingContentObserver );
-	}
-
-	/**
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
 	 * collection.
+	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public void replace( final List<T> replacementObjects ) throws StorageModificationException {
+	public List<T> replace( final List<T> replacementObjects ) throws StorageModificationException {
 		final String selection = null;
 		final List<String> selectionArgs = Collections.emptyList();
+		final List<T> objectsChanged = this.replace( replacementObjects, selection, selectionArgs );
 
-		this.replace( replacementObjects, selection, selectionArgs );
+		return objectsChanged;
 	}
 
 	/**
@@ -794,66 +747,40 @@ public abstract class Manager<T extends DatabaseObject> {
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite the existing
 	 * collection.
-	 * @param selection A filter declaring which rows to return, formatted as an SQL WHERE clause (excluding the WHERE
+	 * @param selection A filter declaring which rows to replace, formatted as an SQL WHERE clause (excluding the WHERE
 	 * itself).
 	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values from selectionArgs, in
 	 * the order that they appear in the selection. The values will be bound as Strings.
+	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public void replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
+	public List<T> replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
 			throws StorageModificationException {
-		final List<T> oldObjects;
+		final List<T> existingObjects;
 
 		if ( selection == null ) {
-			oldObjects = this.get();
+			existingObjects = this.get();
 		} else {
-			oldObjects = this.get( selection, selectionArgs );
+			existingObjects = this.get( selection, selectionArgs );
 		}
 
-		final Map<IdWrapper, T> oldObjectIdsToSources = new HashMap<IdWrapper, T>();
+		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
+				this.categorize( existingObjects, replacementObjects );
+		final List<T> objectsToAdd = objectsToAddUpdateAndDeleteTriple.getLeft();
+		final List<T> objectsToUpdate = objectsToAddUpdateAndDeleteTriple.getMiddle();
+		final List<T> objectsToDelete = objectsToAddUpdateAndDeleteTriple.getRight();
+		final List<T> objectsChanged = this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
 
-		for ( final T oldObject : oldObjects ) {
-			final IdWrapper oldObjectIdWrapper = this.getId( oldObject );
-
-			oldObjectIdsToSources.put( oldObjectIdWrapper, oldObject );
-		}
-
-		final List<T> objectsToAdd = new ArrayList<T>();
-		final List<T> objectsToUpdate = new ArrayList<T>();
-		final List<T> objectsToDelete = new ArrayList<T>();
-
-		for ( final T replacementObject : replacementObjects ) {
-			final IdWrapper replacementObjectIdWrapper = this.getId( replacementObject );
-			final boolean objectAlreadyExisted = oldObjectIdsToSources.containsKey( replacementObjectIdWrapper );
-
-			if ( objectAlreadyExisted ) {
-				final Long replacementObjectVersion = replacementObject.getVersion();
-				final T oldObject = oldObjectIdsToSources.remove( replacementObjectIdWrapper );
-				final Long oldObjectVersion = oldObject.getVersion();
-
-				if ( replacementObjectVersion > oldObjectVersion ) {
-					objectsToUpdate.add( replacementObject );
-				}
-			} else {
-				objectsToAdd.add( replacementObject );
-			}
-		}
-
-		objectsToDelete.addAll( oldObjectIdsToSources.values() );
-
-		this.apply( objectsToAdd, objectsToUpdate, objectsToDelete );
+		return objectsChanged;
 	}
 
-	public List<T> save( final List<T> objects ) {
-		final List<T> savedObjects = new ArrayList<T>();
-
-		for ( final T object : objects ) {
-			final T savedObject = this.save( object );
-
-			if ( savedObject != null ) {
-				savedObjects.add( savedObject );
-			}
-		}
+	public List<T> save( final List<T> objects ) throws StorageModificationException {
+		final List<T> existingObjects = this.get();
+		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
+				this.categorize( existingObjects, objects );
+		final List<T> objectsToAdd = objectsToAddUpdateAndDeleteTriple.getLeft();
+		final List<T> objectsToUpdate = objectsToAddUpdateAndDeleteTriple.getMiddle();
+		final List<T> savedObjects = this.apply( objectsToAdd, objectsToUpdate );
 
 		return savedObjects;
 	}
@@ -867,24 +794,40 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * {@link DatabaseObject} version.
 	 *
 	 * @param object The {@link DatabaseObject} to save/update.
-	 * @return The newly saved object, or null, if no save was done.
+	 * @return The newly saved object, or {@code null} if no save was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
 	 * with local storage.
 	 */
 	public T save( final T object ) {
-		final Long id = object.getId();
-		final boolean managedExternally = object.isManagedExternally();
+		final boolean idManagedExternally = object.isIdManagedExternally();
 		final T savedObject;
 
-		if ( managedExternally ) {
+		if ( idManagedExternally ) {
+			final long id = object.getId();
 			final T existingObject = this.get( id );
 
 			if ( existingObject == null ) {
-				savedObject = this.performSave( object );
+				T attemptedSaveObject = null;
+
+				try {
+					attemptedSaveObject = this.performSave( object );
+				} catch ( final SQLException sqlException ) {
+					final T justAddedDuplicateObject = this.get( id );
+
+					if ( justAddedDuplicateObject == null ) {
+						throw sqlException;
+					} else {
+						attemptedSaveObject = this.performUpdate( object );
+					}
+				}
+
+				savedObject = attemptedSaveObject;
 			} else {
 				savedObject = this.performUpdate( object );
 			}
 		} else {
+			final Long id = object.getId();
+
 			if ( id == null ) {
 				savedObject = this.performSave( object );
 			} else {
@@ -895,12 +838,39 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObject;
 	}
 
-	public void unregisterForChanges( final OnChangeListener onChangeListener ) {
-		final ContentObserver contentObserver = this.contentObservers.get( onChangeListener );
+	/**
+	 * Updates all objects with the given field values.
+	 *
+	 * @param contentValues The new field values. The key is the column name for the field. A null value will remove an
+	 * existing field value.
+	 * @return The number of objects updated.
+	 */
+	protected final int update( final ContentValues contentValues ) {
+		final String whereClause = null;
+		final List<String> whereArgs = Collections.emptyList();
+		final int numberOfUpdatedObjects = this.update( contentValues, whereClause, whereArgs );
 
-		if ( contentObserver != null ) {
-			this.contentResolver.unregisterContentObserver( contentObserver );
-			this.contentObservers.remove( onChangeListener );
-		}
+		return numberOfUpdatedObjects;
+	}
+
+	/**
+	 * Updates all objects that match the where clause with the given field values.
+	 *
+	 * @param contentValues The new field values. The key is the column name for the field. A null value will remove an
+	 * existing field value.
+	 * @param whereClause A filter to apply to rows before updating, formatted as an SQL WHERE clause (excluding the
+	 * WHERE itself).
+	 * @param whereArgs The values with which to replace the question marks in the where clause.
+	 * @return The number of objects updated.
+	 */
+	protected final int update( final ContentValues contentValues, final String whereClause,
+			final List<String> whereArgs ) {
+		final Contract contract = this.getContract();
+		final String authority = this.getAuthority();
+		final Uri contentUri = contract.getContentUri( authority );
+		final int numberOfUpdatedObjects = this.contentResolver
+				.update( contentUri, contentValues, whereClause, whereArgs.toArray( new String[ whereArgs.size() ] ) );
+
+		return numberOfUpdatedObjects;
 	}
 }
