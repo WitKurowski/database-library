@@ -23,6 +23,7 @@ import com.wit.databaselibrary.model.Order;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -118,7 +119,8 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObjects;
 	}
 
-	protected Triple<List<T>, List<T>, List<T>> categorize( final List<T> existingObjects, final List<T> newObjects ) {
+	protected Triple<List<T>, List<T>, List<T>> categorize( final Collection<T> existingObjects,
+			final Collection<T> newObjects ) {
 		final Map<Long, T> existingObjectIdsToSources = new HashMap<Long, T>();
 
 		for ( final T existingObject : existingObjects ) {
@@ -774,7 +776,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		return objectsChanged;
 	}
 
-	public List<T> save( final List<T> objects ) throws StorageModificationException {
+	public List<T> save( final Collection<T> objects ) throws StorageModificationException {
 		final List<T> existingObjects = this.get();
 		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
 				this.categorize( existingObjects, objects );
