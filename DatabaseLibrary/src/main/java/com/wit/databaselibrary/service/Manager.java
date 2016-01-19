@@ -23,6 +23,7 @@ import com.wit.databaselibrary.model.Order;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -118,7 +119,8 @@ public abstract class Manager<T extends DatabaseObject> {
 		return savedObjects;
 	}
 
-	protected Triple<List<T>, List<T>, List<T>> categorize( final List<T> existingObjects, final List<T> newObjects ) {
+	protected Triple<List<T>, List<T>, List<T>> categorize( final Collection<T> existingObjects,
+			final Collection<T> newObjects ) {
 		final Map<Long, T> existingObjectIdsToSources = new HashMap<Long, T>();
 
 		for ( final T existingObject : existingObjects ) {
@@ -584,8 +586,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @return The updated {@link DatabaseObject} from local storage or null if no update was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and it is out of sync
 	 * with local storage.
+	 * @throws IllegalStateException The given {@link DatabaseObject} has already been deleted from local storage.
 	 */
-	private T performUpdate( final T object ) throws IllegalArgumentException {
+	private T performUpdate( final T object ) throws IllegalArgumentException, IllegalStateException {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final long id = object.getId();
@@ -603,21 +606,26 @@ public abstract class Manager<T extends DatabaseObject> {
 			whereArgs.add( String.valueOf( object.getVersion() ) );
 		} else {
 			final T savedObject = this.get( id );
-			final long savedObjectVersion = savedObject.getVersion();
-			final long newObjectVersion = object.getVersion();
 
-			if ( newObjectVersion < savedObjectVersion ) {
-				throw new IllegalArgumentException(
-						"Attempting to update a stale object.  The stored version of the object is '" +
-								savedObjectVersion + "' while the passed in object has a version of '" +
-								newObjectVersion + "'." );
+			if ( savedObject == null ) {
+				throw new IllegalStateException( "Attempting to update a deleted object with: " + object );
+			} else {
+				final long savedObjectVersion = savedObject.getVersion();
+				final long newObjectVersion = object.getVersion();
+
+				if ( newObjectVersion < savedObjectVersion ) {
+					throw new IllegalArgumentException(
+							"Attempting to update a stale object.  The stored version of the object is '" +
+									savedObjectVersion + "' while the passed in object has a version of '" +
+									newObjectVersion + "'." );
+				}
+
+				whereClauseBuilder.append( " AND " + Contract.Columns.VERSION + " = ?" );
+
+				whereArgs.add( String.valueOf( savedObjectVersion ) );
+
+				object.setVersion( newObjectVersion + 1 );
 			}
-
-			whereClauseBuilder.append( " AND " + Contract.Columns.VERSION + " = ?" );
-
-			whereArgs.add( String.valueOf( savedObjectVersion ) );
-
-			object.setVersion( newObjectVersion + 1 );
 		}
 
 		final Uri contentUri = contract.getContentUri( authority, id );
@@ -774,7 +782,7 @@ public abstract class Manager<T extends DatabaseObject> {
 		return objectsChanged;
 	}
 
-	public List<T> save( final List<T> objects ) throws StorageModificationException {
+	public List<T> save( final Collection<T> objects ) throws StorageModificationException {
 		final List<T> existingObjects = this.get();
 		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
 				this.categorize( existingObjects, objects );

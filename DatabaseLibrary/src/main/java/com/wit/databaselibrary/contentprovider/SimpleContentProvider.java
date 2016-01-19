@@ -182,7 +182,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		}
 
 		final long rowId =
-				sqLiteDatabase.insert( tableName, nullColumnHack, contentValues );
+				sqLiteDatabase.insertOrThrow( tableName, nullColumnHack, contentValues );
 
 		if ( rowId > 0 ) {
 			final Uri contentUriWithAppendedId =
