@@ -178,7 +178,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @return The number of {@link DatabaseObject}s that were deleted.
 	 * @throws StorageModificationException A delete operation failed.
 	 */
-	public void delete( final List<T> objects ) throws StorageModificationException {
+	public void delete( final Collection<T> objects ) throws StorageModificationException {
 		final String authority = this.getAuthority();
 		final ArrayList<ContentProviderOperation> contentProviderOperations = new ArrayList<ContentProviderOperation>(
 				this.processObjectsToDelete( objects ) );
@@ -297,7 +297,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	protected abstract T get( final Cursor cursor );
 
-	public List<T> get( final List<Long> ids ) {
+	public List<T> get( final Collection<Long> ids ) {
 		final List<T> objects = new ArrayList<T>();
 
 		if ( !ids.isEmpty() ) {
@@ -650,7 +650,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @param objectsToAdd The objects to create {@link ContentProviderOperation} for.
 	 * @return The created {@link ContentProviderOperation}s.
 	 */
-	private List<ContentProviderOperation> processObjectsToAdd( final List<T> objectsToAdd ) {
+	private List<ContentProviderOperation> processObjectsToAdd( final Collection<T> objectsToAdd ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
@@ -676,7 +676,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @param objectsToDelete The objects to create {@link ContentProviderOperation} for.
 	 * @return The created {@link ContentProviderOperation}s.
 	 */
-	private List<ContentProviderOperation> processObjectsToDelete( final List<T> objectsToDelete ) {
+	private List<ContentProviderOperation> processObjectsToDelete( final Collection<T> objectsToDelete ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
@@ -707,7 +707,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @param objectsToUpdate The objects to create {@link ContentProviderOperation} for.
 	 * @return The created {@link ContentProviderOperation}s.
 	 */
-	private List<ContentProviderOperation> processObjectsToUpdate( final List<T> objectsToUpdate ) {
+	private List<ContentProviderOperation> processObjectsToUpdate( final Collection<T> objectsToUpdate ) {
 		final Contract contract = this.getContract();
 		final String authority = this.getAuthority();
 		final Uri contentUri = contract.getContentUri( authority );
@@ -742,7 +742,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public List<T> replace( final List<T> replacementObjects ) throws StorageModificationException {
+	public List<T> replace( final Collection<T> replacementObjects ) throws StorageModificationException {
 		final String selection = null;
 		final List<String> selectionArgs = Collections.emptyList();
 		final List<T> objectsChanged = this.replace( replacementObjects, selection, selectionArgs );
@@ -762,7 +762,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update, or delete) failed.
 	 */
-	public List<T> replace( final List<T> replacementObjects, final String selection, final List<String> selectionArgs )
+	public List<T> replace( final Collection<T> replacementObjects, final String selection, final List<String> selectionArgs )
 			throws StorageModificationException {
 		final List<T> existingObjects;
 
