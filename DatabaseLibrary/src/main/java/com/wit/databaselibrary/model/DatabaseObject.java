@@ -13,6 +13,13 @@ public class DatabaseObject {
 
 	/**
 	 * Creates a new {@link DatabaseObject}.
+	 */
+	public DatabaseObject() {
+		this( null, 1L );
+	}
+
+	/**
+	 * Creates a new {@link DatabaseObject}.
 	 *
 	 * @param id The unique identifier for this object.
 	 */
