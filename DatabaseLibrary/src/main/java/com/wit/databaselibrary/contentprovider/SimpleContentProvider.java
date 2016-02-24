@@ -111,10 +111,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	protected abstract SQLiteOpenHelper getDatabaseHelper();
 
-	protected abstract String getDatabaseName();
-
-	protected abstract int getDatabaseVersion();
-
 	private String getTableName( final Uri uri, final String authority ) {
 		String tableName = null;
 
