@@ -1,14 +1,21 @@
 package com.wit.databaselibrary.model;
 
+import android.provider.BaseColumns;
+
+import com.wit.databaselibrary.annotation.Column;
+import com.wit.databaselibrary.contentprovider.contract.Contract;
+
 public class DatabaseObject {
 	/**
 	 * The unique identifier for this object.
 	 */
+	@Column( columnName = BaseColumns._ID, columnType = ColumnType.LONG )
 	private final Long id;
 
 	/**
 	 * The numerical value used to determine which instance of an object is most up-to-date.
 	 */
+	@Column( columnName = Contract.Columns.VERSION, columnType = ColumnType.LONG )
 	private Long version;
 
 	/**
@@ -31,7 +38,8 @@ public class DatabaseObject {
 	 * Creates a new {@link DatabaseObject}.
 	 *
 	 * @param id The unique identifier for this object.
-	 * @param version The numerical value used to determine which instance of an object is most up-to-date.
+	 * @param version The numerical value used to determine which instance of an object is most
+	 * up-to-date.
 	 */
 	public DatabaseObject( final Long id, final Long version ) {
 		this.id = id;
@@ -48,9 +56,11 @@ public class DatabaseObject {
 	}
 
 	/**
-	 * Returns the version of this object, which is incremented every single time the object is modified.
+	 * Returns the version of this object, which is incremented every single time the object is
+	 * modified.
 	 *
-	 * @return The version of this object, which is incremented every single time the object is modified.
+	 * @return The version of this object, which is incremented every single time the object is
+	 * modified.
 	 */
 	public Long getVersion() {
 		return this.version;
@@ -77,7 +87,8 @@ public class DatabaseObject {
 	/**
 	 * Sets the numerical value used to determine which instance of an object is most up-to-date.
 	 *
-	 * @param version The numerical value used to determine which instance of an object is most up-to-date.
+	 * @param version The numerical value used to determine which instance of an object is most
+	 * up-to-date.
 	 */
 	public void setVersion( final Long version ) {
 		this.version = version;
