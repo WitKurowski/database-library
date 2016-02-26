@@ -241,13 +241,11 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	/**
 	 * Deletes the given {@link DatabaseObject} if the current saved state of it satisfies the
-	 * given where clause and
-	 * arguments.  Note that the object ID matching condition will be added to the where clause
-	 * and argument list.
+	 * given where clause and arguments.  Note that the object ID matching condition will be added
+	 * to the where clause and argument list.
 	 *
 	 * @param object The {@link DatabaseObject} to delete, assuming it satisfies the given where
-	 * clause and
-	 * arguments.
+	 * clause and arguments.
 	 * @param whereClause The where clause to use to determine whether the {@link DatabaseObject}
 	 * should be deleted.
 	 * @param whereArgs The values to replace the question marks with in the where clause.
@@ -268,8 +266,7 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	/**
 	 * Deletes any {@link DatabaseObject} that satisfy the given where clause and arguments using
-	 * the given ID as part
-	 * of the content URI.
+	 * the given ID as part of the content URI.
 	 *
 	 * @param id The ID to use as part of the content URI associated with the delete, if any.
 	 * @param whereClause The where clause to use to narrow down the {@link DatabaseObject}s to
@@ -508,7 +505,7 @@ public abstract class Manager<T extends DatabaseObject> {
 			final String authority = this.getAuthority();
 			final Uri contentUri = this.contract.getContentUri( authority );
 			final List<String> projection = this.contract.getColumnNames();
-			String selection = BaseColumns._ID + " IN (?)";
+			String selectionClause = BaseColumns._ID + " IN (?)";
 			final List<String> selectionArgs = new ArrayList<String>();
 			final StringBuilder idsString = new StringBuilder();
 
@@ -522,12 +519,12 @@ public abstract class Manager<T extends DatabaseObject> {
 			idsString.deleteCharAt( idsString.length() - 1 );
 			idsString.append( ")" );
 
-			selection = selection.replace( "(?)", idsString );
+			selectionClause = selectionClause.replace( "(?)", idsString );
 
 			final Cursor cursor = this.contentResolver
 					.query( contentUri, projection.toArray( new String[ projection.size() ] ),
-							selection, selectionArgs.toArray( new String[ selectionArgs.size() ] ),
-							null );
+							selectionClause,
+							selectionArgs.toArray( new String[ selectionArgs.size() ] ), null );
 
 			if ( cursor != null ) {
 				while ( cursor.moveToNext() ) {
@@ -545,11 +542,12 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	public List<T> get( final List<String> projection, final List<Pair<String, Order>> orderBys,
 			final List<String> groupByColumns ) {
-		final String selection = null;
+		final String selectionClause = null;
 		final List<String> selectionArgs = Collections.emptyList();
 		final Integer limit = null;
 		final List<T> objects =
-				this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
+				this.get( projection, selectionClause, selectionArgs, orderBys, groupByColumns,
+						limit );
 
 		return objects;
 	}
@@ -558,15 +556,15 @@ public abstract class Manager<T extends DatabaseObject> {
 		final String authority = this.getAuthority();
 		final Uri contentUri = this.contract.getContentUri( authority );
 		final List<String> projection = this.contract.getColumnNames();
-		final String selection = BaseColumns._ID + " = ?";
+		final String selectionClause = BaseColumns._ID + " = ?";
 		final List<String> selectionArgs = new ArrayList<String>();
 
 		selectionArgs.add( Long.toString( id ) );
 
 		final Cursor cursor = this.contentResolver
 				.query( contentUri, projection.toArray( new String[ projection.size() ] ),
-						selection, selectionArgs.toArray( new String[ selectionArgs.size() ] ),
-						null );
+						selectionClause,
+						selectionArgs.toArray( new String[ selectionArgs.size() ] ), null );
 		final T object;
 
 		if ( cursor == null ) {
@@ -584,34 +582,37 @@ public abstract class Manager<T extends DatabaseObject> {
 		return object;
 	}
 
-	public List<T> get( final String selection, final List<String> selectionArgs ) {
+	public List<T> get( final String selectionClause, final List<String> selectionArgs ) {
 		final List<String> projection = this.contract.getColumnNames();
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
 		final List<String> groupByColumns = Collections.emptyList();
 		final Integer limit = null;
 		final List<T> objects =
-				this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
+				this.get( projection, selectionClause, selectionArgs, orderBys, groupByColumns,
+						limit );
 
 		return objects;
 	}
 
-	public List<T> get( final String selection, final List<String> selectionArgs,
+	public List<T> get( final String selectionClause, final List<String> selectionArgs,
 			final int limit ) {
 		final List<String> projection = this.contract.getColumnNames();
 		final List<Pair<String, Order>> orderBys = Collections.emptyList();
 		final List<String> groupByColumns = Collections.emptyList();
 		final List<T> objects =
-				this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
+				this.get( projection, selectionClause, selectionArgs, orderBys, groupByColumns,
+						limit );
 
 		return objects;
 	}
 
-	public List<T> get( final String selection, final List<String> selectionArgs,
+	public List<T> get( final String selectionClause, final List<String> selectionArgs,
 			final List<Pair<String, Order>> orderBys, final int limit ) {
 		final List<String> projection = this.contract.getColumnNames();
 		final List<String> groupByColumns = Collections.emptyList();
 		final List<T> objects =
-				this.get( projection, selection, selectionArgs, orderBys, groupByColumns, limit );
+				this.get( projection, selectionClause, selectionArgs, orderBys, groupByColumns,
+						limit );
 
 		return objects;
 	}
@@ -734,8 +735,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * selection criteria.
 	 *
 	 * @param selectionClause The selection clause to use to narrow down the {@link
-	 * DatabaseObject}s to include in the
-	 * count.
+	 * DatabaseObject}s to include in the count.
 	 * @param selectionArgs The values to replace the placeholders with in the selection clause.
 	 * @return The number of {@link DatabaseObject}s that are saved that satisfy the given
 	 * selection criteria.
@@ -882,14 +882,12 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	/**
 	 * Updates the stored data related to the given {@link DatabaseObject} with the data in that
-	 * {@link
-	 * DatabaseObject}.
+	 * {@link DatabaseObject}.
 	 *
 	 * @param object The {@link DatabaseObject} to use in the update.
 	 * @return The updated {@link DatabaseObject} from local storage or null if no update was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and
-	 * it is out of sync
-	 * with local storage.
+	 * it is out of sync with local storage.
 	 * @throws IllegalStateException The given {@link DatabaseObject} has already been deleted
 	 * from local storage.
 	 */
@@ -1056,18 +1054,17 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite
-	 * the existing
-	 * collection.
+	 * the existing collection.
 	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update,
 	 * or delete) failed.
 	 */
 	public List<T> replace( final Collection<T> replacementObjects )
 			throws StorageModificationException {
-		final String selection = null;
+		final String selectionClause = null;
 		final List<String> selectionArgs = Collections.emptyList();
-		final List<T> objectsChanged = this.replace( replacementObjects, selection,
-				selectionArgs );
+		final List<T> objectsChanged =
+				this.replace( replacementObjects, selectionClause, selectionArgs );
 
 		return objectsChanged;
 	}
@@ -1076,28 +1073,24 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
 	 * @param replacementObjects The newer collection of database objects that should overwrite
-	 * the existing
-	 * collection.
-	 * @param selection A filter declaring which rows to replace, formatted as an SQL WHERE clause
-	 * (excluding
-	 * the WHERE
-	 * itself).
-	 * @param selectionArgs You may include ?s in selection, which will be replaced by the values
-	 * from
-	 * selectionArgs, in
-	 * the order that they appear in the selection. The values will be bound as Strings.
+	 * the existing collection.
+	 * @param selectionClause A filter declaring which rows to replace, formatted as an SQL WHERE
+	 * clause (excluding the WHERE itself).
+	 * @param selectionArgs You may include ?s in the selection clause, which will be replaced by
+	 * the values from selectionArgs, in the order that they appear in the selection. The values
+	 * will be bound as Strings.
 	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update,
 	 * or delete) failed.
 	 */
-	public List<T> replace( final Collection<T> replacementObjects, final String selection,
+	public List<T> replace( final Collection<T> replacementObjects, final String selectionClause,
 			final List<String> selectionArgs ) throws StorageModificationException {
 		final List<T> existingObjects;
 
-		if ( selection == null ) {
+		if ( selectionClause == null ) {
 			existingObjects = this.get();
 		} else {
-			existingObjects = this.get( selection, selectionArgs );
+			existingObjects = this.get( selectionClause, selectionArgs );
 		}
 
 		final Triple<List<T>, List<T>, List<T>> objectsToAddUpdateAndDeleteTriple =
@@ -1124,24 +1117,17 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	/**
 	 * Saves/updates the given {@link DatabaseObject} to/in local storage.  If the version of the
-	 * {@link
-	 * DatabaseObject}
-	 * is managed internally, the save will succeed only if the given {@link DatabaseObject} has
-	 * never been saved
-	 * before
-	 * or the saved {@link DatabaseObject} version is the same as the given {@link DatabaseObject}
-	 * version. If the
-	 * version of the {@link DatabaseObject} is managed externally, the save will succeed only if
-	 * the given {@link
-	 * DatabaseObject} has never been saved before or the saved {@link DatabaseObject} version is
-	 * older than the given
-	 * {@link DatabaseObject} version.
+	 * {@link DatabaseObject} is managed internally, the save will succeed only if the given
+	 * {@link DatabaseObject} has never been saved before or the saved {@link DatabaseObject}
+	 * version is the same as the given {@link DatabaseObject} version. If the version of the
+	 * {@link DatabaseObject} is managed externally, the save will succeed only if the given
+	 * {@link DatabaseObject} has never been saved before or the saved {@link DatabaseObject}
+	 * version is older than the given {@link DatabaseObject} version.
 	 *
 	 * @param object The {@link DatabaseObject} to save/update.
 	 * @return The newly saved object, or {@code null} if no save was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and
-	 * it is out of sync
-	 * with local storage.
+	 * it is out of sync with local storage.
 	 */
 	public T save( final T object ) {
 		final boolean idManagedExternally = object.isIdManagedExternally();
@@ -1187,8 +1173,7 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Updates all objects with the given field values.
 	 *
 	 * @param contentValues The new field values. The key is the column name for the field. A null
-	 * value will remove an
-	 * existing field value.
+	 * value will remove an existing field value.
 	 * @return The number of objects updated.
 	 */
 	protected final int update( final ContentValues contentValues ) {
@@ -1203,11 +1188,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * Updates all objects that match the where clause with the given field values.
 	 *
 	 * @param contentValues The new field values. The key is the column name for the field. A null
-	 * value will remove an
-	 * existing field value.
+	 * value will remove an existing field value.
 	 * @param whereClause A filter to apply to rows before updating, formatted as an SQL WHERE
-	 * clause (excluding the
-	 * WHERE itself).
+	 * clause (excluding the WHERE itself).
 	 * @param whereArgs The values with which to replace the question marks in the where clause.
 	 * @return The number of objects updated.
 	 */
