@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class Contract {
+public abstract class Contract<T extends DatabaseObject> {
 	public static abstract class Columns implements BaseColumns {
 		/**
 		 * The version of an object.
@@ -43,11 +43,11 @@ public abstract class Contract {
 	private final int objectIdCode = 2;
 	private final Map<String, String> projectionMap = new HashMap<String, String>();
 	private final List<String> columnNames = new ArrayList<String>();
-	private final Class<? extends DatabaseObject> databaseObjectClass;
+	private final Class<T> databaseObjectClass;
 	private final String createTableSqlString;
 	private boolean uriMatcherPrepared = false;
 
-	public Contract( final Class<? extends DatabaseObject> databaseObjectClass ) {
+	public Contract( final Class<T> databaseObjectClass ) {
 		this.databaseObjectClass = databaseObjectClass;
 
 		this.setupProjectionMap();

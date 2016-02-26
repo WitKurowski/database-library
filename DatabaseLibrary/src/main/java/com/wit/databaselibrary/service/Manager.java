@@ -39,10 +39,10 @@ import java.util.Map;
 public abstract class Manager<T extends DatabaseObject> {
 	private final ContentResolver contentResolver;
 	private final Class<T> parameterClass;
-	private final Contract contract;
+	private final Contract<T> contract;
 	protected final String packageName;
 
-	protected Manager( final Context context, final Contract contract,
+	protected Manager( final Context context, final Contract<T> contract,
 			final Class<T> parameterClass ) {
 		this.contentResolver = context.getContentResolver();
 		this.parameterClass = parameterClass;
