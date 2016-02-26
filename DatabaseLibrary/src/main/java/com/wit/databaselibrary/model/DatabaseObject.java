@@ -29,15 +29,6 @@ public class DatabaseObject {
 	 * Creates a new {@link DatabaseObject}.
 	 *
 	 * @param id The unique identifier for this object.
-	 */
-	public DatabaseObject( final Long id ) {
-		this( id, 1L );
-	}
-
-	/**
-	 * Creates a new {@link DatabaseObject}.
-	 *
-	 * @param id The unique identifier for this object.
 	 * @param version The numerical value used to determine which instance of an object is most
 	 * up-to-date.
 	 */
