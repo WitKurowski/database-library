@@ -25,10 +25,10 @@ import java.util.Map;
 import java.util.Set;
 
 public abstract class SimpleContentProvider extends ContentProvider {
-	private final List<Contract> contracts;
+	private final Set<Contract> contracts;
 	private SimpleDatabaseHelper simpleDatabaseHelper;
 
-	public SimpleContentProvider( final List<Contract> contracts ) {
+	public SimpleContentProvider( final Set<Contract> contracts ) {
 		this.contracts = contracts;
 	}
 
