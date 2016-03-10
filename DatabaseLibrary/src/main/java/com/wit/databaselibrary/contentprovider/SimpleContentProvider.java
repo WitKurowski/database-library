@@ -24,6 +24,7 @@ import java.util.Map;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	private final List<Contract> contracts;
+	private SQLiteOpenHelper sqLiteOpenHelper;
 
 	public SimpleContentProvider( final List<Contract> contracts ) {
 		this.contracts = contracts;
@@ -42,19 +43,21 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	}
 
 	@Override
-	public ContentProviderResult[] applyBatch( final ArrayList<ContentProviderOperation> contentProviderOperations )
+	public ContentProviderResult[] applyBatch(
+			final ArrayList<ContentProviderOperation> contentProviderOperations )
 			throws OperationApplicationException {
-		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
-				databaseHelper.getWritableDatabase();
+				this.sqLiteOpenHelper.getWritableDatabase();
 
 		sqLiteDatabase.beginTransaction();
 
-		final List<ContentProviderResult> contentProviderResults = new ArrayList<ContentProviderResult>();
+		final List<ContentProviderResult> contentProviderResults =
+				new ArrayList<ContentProviderResult>();
 
 		try {
 			for ( final ContentProviderOperation contentProviderOperation : contentProviderOperations ) {
-				final ContentProviderResult contentProviderResult = contentProviderOperation.apply( this, null, 0 );
+				final ContentProviderResult contentProviderResult =
+						contentProviderOperation.apply( this, null, 0 );
 
 				contentProviderResults.add( contentProviderResult );
 			}
@@ -64,17 +67,19 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			sqLiteDatabase.endTransaction();
 		}
 
-		return contentProviderResults.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
+		return contentProviderResults
+				.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
 	}
+
+	protected abstract SQLiteOpenHelper createDatabaseHelper();
 
 	@Override
 	public int delete( final Uri uri, final String selection,
 			final String[] selectionArgs ) {
 		final String authority = this.getAuthority();
 		final String tableName = this.getTableName( uri, authority );
-		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
-				databaseHelper.getWritableDatabase();
+				this.sqLiteOpenHelper.getWritableDatabase();
 		final int count =
 				sqLiteDatabase.delete( tableName, selection, selectionArgs );
 
@@ -88,7 +93,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	 *
 	 * @param uri The {@link Uri} to try to match.
 	 * @return The {@link Contract} that successfully matches the given {@link Uri} by object.
-	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by object.
+	 * @throws IllegalArgumentException The given {@link Uri} did not match any {@link Contract} by
+	 * object.
 	 */
 	private Contract getContractByMatchingObject( final Uri uri ) throws IllegalArgumentException {
 		final String authority = this.getAuthority();
@@ -108,8 +114,6 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 		return contract;
 	}
-
-	protected abstract SQLiteOpenHelper getDatabaseHelper();
 
 	private String getTableName( final Uri uri, final String authority ) {
 		String tableName = null;
@@ -160,9 +164,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	@Override
 	public Uri insert( final Uri uri, ContentValues contentValues ) {
 		final Contract contract = this.getContractByMatchingObject( uri );
-		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
-				databaseHelper.getWritableDatabase();
+				this.sqLiteOpenHelper.getWritableDatabase();
 
 		if ( contentValues == null ) {
 			contentValues = new ContentValues();
@@ -192,6 +195,13 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		} else {
 			throw new SQLException( "Failed to insert row into " + uri );
 		}
+	}
+
+	@Override
+	public boolean onCreate() {
+		this.sqLiteOpenHelper = this.createDatabaseHelper();
+
+		return false;
 	}
 
 	@Override
@@ -227,9 +237,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		sqLiteQueryBuilder.setTables( tableName );
 		sqLiteQueryBuilder.setProjectionMap( projectionMap );
 
-		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
-				databaseHelper.getReadableDatabase();
+				this.sqLiteOpenHelper.getReadableDatabase();
 		final Cursor cursor =
 				sqLiteQueryBuilder.query( sqLiteDatabase, projection,
 						newSelection, selectionArgs, null, null, sortOrder );
@@ -242,9 +251,8 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	@Override
 	public int update( final Uri uri, final ContentValues contentValues,
 			final String selection, final String[] selectionArgs ) {
-		final SQLiteOpenHelper databaseHelper = this.getDatabaseHelper();
 		final SQLiteDatabase sqLiteDatabase =
-				databaseHelper.getWritableDatabase();
+				this.sqLiteOpenHelper.getWritableDatabase();
 		final String authority = this.getAuthority();
 		final String tableName = this.getTableName( uri, authority );
 		final int count =
