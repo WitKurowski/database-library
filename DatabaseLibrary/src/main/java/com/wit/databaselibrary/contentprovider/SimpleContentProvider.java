@@ -15,16 +15,18 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
+import android.support.annotation.CallSuper;
 
 import com.wit.databaselibrary.contentprovider.contract.Contract;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class SimpleContentProvider extends ContentProvider {
 	private final List<Contract> contracts;
-	private SQLiteOpenHelper sqLiteOpenHelper;
+	private SimpleDatabaseHelper simpleDatabaseHelper;
 
 	public SimpleContentProvider( final List<Contract> contracts ) {
 		this.contracts = contracts;
@@ -47,7 +49,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 			final ArrayList<ContentProviderOperation> contentProviderOperations )
 			throws OperationApplicationException {
 		final SQLiteDatabase sqLiteDatabase =
-				this.sqLiteOpenHelper.getWritableDatabase();
+				this.simpleDatabaseHelper.getWritableDatabase();
 
 		sqLiteDatabase.beginTransaction();
 
@@ -71,7 +73,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 				.toArray( new ContentProviderResult[ contentProviderResults.size() ] );
 	}
 
-	protected abstract SQLiteOpenHelper createDatabaseHelper();
+	protected abstract SimpleDatabaseHelper createDatabaseHelper();
 
 	@Override
 	public int delete( final Uri uri, final String selection,
@@ -79,7 +81,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		final String authority = this.getAuthority();
 		final String tableName = this.getTableName( uri, authority );
 		final SQLiteDatabase sqLiteDatabase =
-				this.sqLiteOpenHelper.getWritableDatabase();
+				this.simpleDatabaseHelper.getWritableDatabase();
 		final int count =
 				sqLiteDatabase.delete( tableName, selection, selectionArgs );
 
@@ -165,7 +167,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public Uri insert( final Uri uri, ContentValues contentValues ) {
 		final Contract contract = this.getContractByMatchingObject( uri );
 		final SQLiteDatabase sqLiteDatabase =
-				this.sqLiteOpenHelper.getWritableDatabase();
+				this.simpleDatabaseHelper.getWritableDatabase();
 
 		if ( contentValues == null ) {
 			contentValues = new ContentValues();
@@ -199,7 +201,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 
 	@Override
 	public boolean onCreate() {
-		this.sqLiteOpenHelper = this.createDatabaseHelper();
+		this.simpleDatabaseHelper = this.createDatabaseHelper();
 
 		return false;
 	}
@@ -238,7 +240,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 		sqLiteQueryBuilder.setProjectionMap( projectionMap );
 
 		final SQLiteDatabase sqLiteDatabase =
-				this.sqLiteOpenHelper.getReadableDatabase();
+				this.simpleDatabaseHelper.getReadableDatabase();
 		final Cursor cursor =
 				sqLiteQueryBuilder.query( sqLiteDatabase, projection,
 						newSelection, selectionArgs, null, null, sortOrder );
@@ -252,7 +254,7 @@ public abstract class SimpleContentProvider extends ContentProvider {
 	public int update( final Uri uri, final ContentValues contentValues,
 			final String selection, final String[] selectionArgs ) {
 		final SQLiteDatabase sqLiteDatabase =
-				this.sqLiteOpenHelper.getWritableDatabase();
+				this.simpleDatabaseHelper.getWritableDatabase();
 		final String authority = this.getAuthority();
 		final String tableName = this.getTableName( uri, authority );
 		final int count =
@@ -260,5 +262,29 @@ public abstract class SimpleContentProvider extends ContentProvider {
 						selectionArgs );
 
 		return count;
+	}
+
+	public static class SimpleDatabaseHelper extends SQLiteOpenHelper {
+		private final Set<Contract> contracts;
+
+		public SimpleDatabaseHelper( final Context context, final String name, final int version,
+				final Set<Contract> contracts ) {
+			super( context, name, null, version );
+
+			this.contracts = contracts;
+		}
+
+		@Override
+		@CallSuper
+		public void onCreate( final SQLiteDatabase sqLiteDatabase ) {
+			for ( final Contract contract : this.contracts ) {
+				sqLiteDatabase.execSQL( contract.getCreateTableSqlString() );
+			}
+		}
+
+		@Override
+		public void onUpgrade( final SQLiteDatabase sqLiteDatabase, final int oldVersion,
+				final int newVersion ) {
+		}
 	}
 }
