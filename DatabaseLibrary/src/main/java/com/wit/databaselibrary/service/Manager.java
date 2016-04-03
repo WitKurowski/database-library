@@ -30,6 +30,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -172,6 +173,30 @@ public abstract class Manager<T extends DatabaseObject> {
 		return objectsToAddUpdateAndDeleteTriple;
 	}
 
+
+	/**
+	 * Creates an empty instance of the parameter class passed into this {@link Manager}.
+	 *
+	 * @return An empty instance of the parameter class passed into this {@link Manager}.
+	 */
+	private T createNewEmptyInstance() {
+		final Constructor<T>[] declaredConstructors =
+				(Constructor<T>[]) this.parameterClass.getDeclaredConstructors();
+		final Constructor<T> declaredConstructor = declaredConstructors[ 0 ];
+		final Class<?>[] parameterTypes = declaredConstructor.getParameterTypes();
+		final T newObject;
+
+		try {
+			newObject = declaredConstructor.newInstance( new Object[ parameterTypes.length ] );
+		} catch ( final InstantiationException | IllegalAccessException |
+				InvocationTargetException exception ) {
+			throw new IllegalStateException( "Unable to create a new instance of DatabaseObject.",
+					exception );
+		}
+
+		return newObject;
+	}
+
 	/**
 	 * Deletes all {@link DatabaseObject}s associated with this {@link Manager}.
 	 *
@@ -240,9 +265,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Deletes the given {@link DatabaseObject} if the current saved state of it satisfies the
-	 * given where clause and arguments.  Note that the object ID matching condition will be added
-	 * to the where clause and argument list.
+	 * Deletes the given {@link DatabaseObject} if the current saved state of it satisfies the given
+	 * where clause and arguments.  Note that the object ID matching condition will be added to the
+	 * where clause and argument list.
 	 *
 	 * @param object The {@link DatabaseObject} to delete, assuming it satisfies the given where
 	 * clause and arguments.
@@ -412,88 +437,9 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	protected T get( final Cursor cursor ) {
-		final int idIndex = cursor.getColumnIndex( BaseColumns._ID );
-		final Long id = cursor.getLong( idIndex );
-		final int versionIndex = cursor.getColumnIndex( Contract.Columns.VERSION );
-		final Long version = cursor.getLong( versionIndex );
-		final Constructor<T> declaredConstructor;
+		final T databaseObject = this.createNewEmptyInstance();
 
-		try {
-			declaredConstructor =
-					this.parameterClass.getDeclaredConstructor( Long.class, Long.class );
-		} catch ( final NoSuchMethodException noSuchMethodException ) {
-			throw new IllegalStateException(
-					"No constructor defined that takes the ID and version of the DatabaseObject.",
-					noSuchMethodException );
-		}
-
-		final T databaseObject;
-
-		try {
-			databaseObject = declaredConstructor.newInstance( id, version );
-		} catch ( final InstantiationException | IllegalAccessException |
-				InvocationTargetException exception ) {
-			throw new IllegalStateException( "Unable to create a new instance of DatabaseObject.",
-					exception );
-		}
-
-		final Field[] declaredFields = this.parameterClass.getDeclaredFields();
-
-		for ( final Field declaredField : declaredFields ) {
-			final Column column = declaredField.getAnnotation( Column.class );
-			final String columnName = column.columnName();
-			final int index = cursor.getColumnIndex( columnName );
-
-			if ( index != idIndex && index != versionIndex ) {
-				final ColumnType columnType = column.columnType();
-				final Object value;
-				final Class<?> setterParameterClass;
-
-				switch ( columnType ) {
-					case INTEGER:
-						value = cursor.getInt( index );
-						setterParameterClass = Integer.class;
-
-						break;
-					case LONG:
-						value = cursor.getLong( index );
-						setterParameterClass = Long.class;
-
-						break;
-					case STRING:
-						value = cursor.getString( index );
-						setterParameterClass = String.class;
-
-						break;
-					default:
-						throw new IllegalArgumentException( "Found unknown column type '" +
-								columnType + "'." );
-				}
-
-				final String name = declaredField.getName();
-				final String setterMethodName = "set" + name.substring( 0, 1 ).toUpperCase() +
-						name.substring( 1 );
-
-				try {
-					final Method declaredMethod = this.parameterClass
-							.getDeclaredMethod( setterMethodName, setterParameterClass );
-
-					declaredMethod.invoke( databaseObject, value );
-				} catch ( final InvocationTargetException invocationTargetException ) {
-					throw new IllegalStateException(
-							"Unable to set value '" + value + "' through method '" +
-									setterMethodName + "()'.", invocationTargetException );
-				} catch ( final NoSuchMethodException noSuchMethodException ) {
-					throw new InvalidClassDefinitionException( "Unable to set value '" + value +
-							"' through method '" + setterMethodName + "()'.",
-							noSuchMethodException );
-				} catch ( final IllegalAccessException illegalAccessException ) {
-					throw new InvalidClassDefinitionException( "Unable to set value '" + value +
-							"' through method '" + setterMethodName + "()'.",
-							illegalAccessException );
-				}
-			}
-		}
+		this.populate( databaseObject, cursor );
 
 		return databaseObject;
 	}
@@ -715,6 +661,25 @@ public abstract class Manager<T extends DatabaseObject> {
 		return objects;
 	}
 
+	private List<Field> getAllDeclaredFieldsInHierarchy( final Class<?> clazz ) {
+		final List<Field> declaredFields = new ArrayList<>();
+
+		declaredFields.addAll( Arrays.asList( clazz.getDeclaredFields() ) );
+
+		Class<?> parentClazz = clazz.getSuperclass();
+
+		while ( !parentClazz.equals( Object.class ) ) {
+			final List<Field> currentDeclaredFields =
+					Arrays.asList( parentClazz.getDeclaredFields() );
+
+			declaredFields.addAll( currentDeclaredFields );
+
+			parentClazz = parentClazz.getSuperclass();
+		}
+
+		return declaredFields;
+	}
+
 	protected abstract String getAuthority();
 
 	/**
@@ -731,14 +696,14 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Returns the number of {@link DatabaseObject}s that are saved that satisfy the given
-	 * selection criteria.
+	 * Returns the number of {@link DatabaseObject}s that are saved that satisfy the given selection
+	 * criteria.
 	 *
-	 * @param selectionClause The selection clause to use to narrow down the {@link
-	 * DatabaseObject}s to include in the count.
+	 * @param selectionClause The selection clause to use to narrow down the {@link DatabaseObject}s
+	 * to include in the count.
 	 * @param selectionArgs The values to replace the placeholders with in the selection clause.
-	 * @return The number of {@link DatabaseObject}s that are saved that satisfy the given
-	 * selection criteria.
+	 * @return The number of {@link DatabaseObject}s that are saved that satisfy the given selection
+	 * criteria.
 	 */
 	public final int getCount( final String selectionClause, final List<String> selectionArgs ) {
 		final String authority = this.getAuthority();
@@ -762,107 +727,33 @@ public abstract class Manager<T extends DatabaseObject> {
 		return count;
 	}
 
+	/**
+	 * Creates a new object of type {@link T} with all the same fields as an existing object of type
+	 * {@link T}, but with a new ID.
+	 *
+	 * @param oldObject The existing object to pull fields from.
+	 * @param newId The ID of the newly created object.
+	 * @return A new object with all the same fields as {@code oldObject}, but with the new ID.
+	 */
 	protected T merge( final T oldObject, final long newId ) {
-		final Long version = oldObject.getVersion();
-		final Constructor<T> declaredConstructor;
+		final T newObject = this.createNewEmptyInstance();
+
+		this.populate( oldObject, newObject );
+
+		final String idFieldName = "id";
 
 		try {
-			declaredConstructor =
-					this.parameterClass.getDeclaredConstructor( Long.class, Long.class );
-		} catch ( final NoSuchMethodException noSuchMethodException ) {
+			final Field declaredField = DatabaseObject.class.getDeclaredField( idFieldName );
+
+			declaredField.setAccessible( true );
+			declaredField.set( newObject, newId );
+		} catch ( final IllegalAccessException illegalAccessException ) {
 			throw new IllegalStateException(
-					"No constructor defined that takes the ID and version of the DatabaseObject.",
-					noSuchMethodException );
-		}
-
-		final T newObject;
-
-		try {
-			newObject = declaredConstructor.newInstance( newId, version );
-		} catch ( final InstantiationException | IllegalAccessException |
-				InvocationTargetException exception ) {
-			throw new IllegalStateException( "Unable to create a new instance of DatabaseObject.",
-					exception );
-		}
-
-		final Field[] declaredFields = this.parameterClass.getDeclaredFields();
-
-		for ( final Field declaredField : declaredFields ) {
-			final Column column = declaredField.getAnnotation( Column.class );
-			final String columnName = column.columnName();
-			final ColumnType columnType = column.columnType();
-
-			if ( !columnName.equals( BaseColumns._ID ) &&
-					!columnName.equals( Contract.Columns.VERSION ) ) {
-				final String name = declaredField.getName();
-				final String getterMethodName = "get" + name.substring( 0, 1 ).toUpperCase() +
-						name.substring( 1 );
-				final Method declaredGetterMethod;
-
-				try {
-					declaredGetterMethod = this.parameterClass
-							.getDeclaredMethod( getterMethodName, new Class<?>[ 0 ] );
-				} catch ( final NoSuchMethodException noSuchMethodException ) {
-					throw new InvalidClassDefinitionException( "Unable to get find method '" +
-							getterMethodName + "'().", noSuchMethodException );
-				}
-
-				final Object value;
-
-				try {
-					value = declaredGetterMethod.invoke( oldObject, new Object[ 0 ] );
-				} catch ( final InvocationTargetException invocationTargetException ) {
-					throw new IllegalStateException(
-							"Unable to get value of type '" + columnType + "' from method '" +
-									getterMethodName + "()'.", invocationTargetException );
-				} catch ( final IllegalAccessException illegalAccessException ) {
-					throw new InvalidClassDefinitionException( "Unable to get value of type '" +
-							columnType + "' from method '" + getterMethodName + "()'.",
-							illegalAccessException );
-				}
-
-				final Class<?> setterParameterClass;
-
-				switch ( columnType ) {
-					case INTEGER:
-						setterParameterClass = Integer.class;
-
-						break;
-					case LONG:
-						setterParameterClass = Long.class;
-
-						break;
-					case STRING:
-						setterParameterClass = String.class;
-
-						break;
-					default:
-						throw new IllegalArgumentException( "Found unknown column type '" +
-								columnType + "'." );
-				}
-
-				final String setterMethodName = "set" + name.substring( 0, 1 ).toUpperCase() +
-						name.substring( 1 );
-
-				try {
-					final Method declaredSetterMethod = this.parameterClass
-							.getDeclaredMethod( setterMethodName, setterParameterClass );
-
-					declaredSetterMethod.invoke( newObject, value );
-				} catch ( final InvocationTargetException invocationTargetException ) {
-					throw new IllegalStateException(
-							"Unable to set value '" + value + "' through method '" +
-									setterMethodName + "()'.", invocationTargetException );
-				} catch ( final NoSuchMethodException noSuchMethodException ) {
-					throw new InvalidClassDefinitionException( "Unable to set value '" + value +
-							"' through method '" + setterMethodName + "()'.",
-							noSuchMethodException );
-				} catch ( final IllegalAccessException illegalAccessException ) {
-					throw new InvalidClassDefinitionException( "Unable to set value '" + value +
-							"' through method '" + setterMethodName + "()'.",
-							illegalAccessException );
-				}
-			}
+					"Unable to access 'id' field in 'DatabaseObject' class.",
+					illegalAccessException );
+		} catch ( final NoSuchFieldException noSuchFieldException ) {
+			throw new IllegalStateException(
+					"Unable to find 'id' field in 'DatabaseObject' class.", noSuchFieldException );
 		}
 
 		return newObject;
@@ -888,8 +779,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	 * @return The updated {@link DatabaseObject} from local storage or null if no update was done.
 	 * @throws IllegalArgumentException The given {@link DatabaseObject} is managed internally and
 	 * it is out of sync with local storage.
-	 * @throws IllegalStateException The given {@link DatabaseObject} has already been deleted
-	 * from local storage.
+	 * @throws IllegalStateException The given {@link DatabaseObject} has already been deleted from
+	 * local storage.
 	 */
 	private T performUpdate( final T object )
 			throws IllegalArgumentException, IllegalStateException {
@@ -948,6 +839,72 @@ public abstract class Manager<T extends DatabaseObject> {
 		}
 
 		return savedObject;
+	}
+
+	private void populate( final T databaseObject, final Cursor cursor ) {
+		final List<Field> declaredFields =
+				this.getAllDeclaredFieldsInHierarchy( this.parameterClass );
+
+		for ( final Field declaredField : declaredFields ) {
+			final Column column = declaredField.getAnnotation( Column.class );
+			final String columnName = column.columnName();
+			final int index = cursor.getColumnIndex( columnName );
+			final ColumnType columnType = column.columnType();
+			final Object value;
+
+			switch ( columnType ) {
+				case INTEGER:
+					value = cursor.getInt( index );
+
+					break;
+				case LONG:
+					value = cursor.getLong( index );
+
+					break;
+				case STRING:
+					value = cursor.getString( index );
+
+					break;
+				default:
+					throw new IllegalArgumentException( "Found unknown column type '" +
+							columnType + "'." );
+			}
+
+			try {
+				declaredField.setAccessible( true );
+				declaredField.set( databaseObject, value );
+			} catch ( final IllegalAccessException illegalAccessException ) {
+				final String name = declaredField.getName();
+
+				throw new IllegalStateException(
+						String.format( "Unable to access '$1%s' field in '$2%s' class.", name,
+								this.parameterClass.getSimpleName() ),
+						illegalAccessException );
+			}
+		}
+	}
+
+	private void populate( final T sourceDatabaseObject, final T destinationDatabaseObject ) {
+		final List<Field> declaredFields =
+				this.getAllDeclaredFieldsInHierarchy( this.parameterClass );
+
+		for ( final Field declaredField : declaredFields ) {
+			try {
+				declaredField.setAccessible( true );
+
+				final Object value = declaredField.get( sourceDatabaseObject );
+
+				declaredField.set( destinationDatabaseObject,
+						value );
+			} catch ( final IllegalAccessException illegalAccessException ) {
+				final String name = declaredField.getName();
+
+				throw new IllegalStateException(
+						String.format( "Unable to access '$1%s' field in '$2%s' class.", name,
+								this.parameterClass.getSimpleName() ),
+						illegalAccessException );
+			}
+		}
 	}
 
 	/**
@@ -1053,8 +1010,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	/**
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
-	 * @param replacementObjects The newer collection of database objects that should overwrite
-	 * the existing collection.
+	 * @param replacementObjects The newer collection of database objects that should overwrite the
+	 * existing collection.
 	 * @return The latest version of the objects that have been saved or updated.
 	 * @throws StorageModificationException One of the replacement operations (either add, update,
 	 * or delete) failed.
@@ -1072,8 +1029,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	/**
 	 * Replaces the existing collection of saved database objects with the given collection.
 	 *
-	 * @param replacementObjects The newer collection of database objects that should overwrite
-	 * the existing collection.
+	 * @param replacementObjects The newer collection of database objects that should overwrite the
+	 * existing collection.
 	 * @param selectionClause A filter declaring which rows to replace, formatted as an SQL WHERE
 	 * clause (excluding the WHERE itself).
 	 * @param selectionArgs You may include ?s in the selection clause, which will be replaced by
@@ -1117,12 +1074,12 @@ public abstract class Manager<T extends DatabaseObject> {
 
 	/**
 	 * Saves/updates the given {@link DatabaseObject} to/in local storage.  If the version of the
-	 * {@link DatabaseObject} is managed internally, the save will succeed only if the given
-	 * {@link DatabaseObject} has never been saved before or the saved {@link DatabaseObject}
-	 * version is the same as the given {@link DatabaseObject} version. If the version of the
-	 * {@link DatabaseObject} is managed externally, the save will succeed only if the given
-	 * {@link DatabaseObject} has never been saved before or the saved {@link DatabaseObject}
-	 * version is older than the given {@link DatabaseObject} version.
+	 * {@link DatabaseObject} is managed internally, the save will succeed only if the given {@link
+	 * DatabaseObject} has never been saved before or the saved {@link DatabaseObject} version is
+	 * the same as the given {@link DatabaseObject} version. If the version of the {@link
+	 * DatabaseObject} is managed externally, the save will succeed only if the given {@link
+	 * DatabaseObject} has never been saved before or the saved {@link DatabaseObject} version is
+	 * older than the given {@link DatabaseObject} version.
 	 *
 	 * @param object The {@link DatabaseObject} to save/update.
 	 * @return The newly saved object, or {@code null} if no save was done.
