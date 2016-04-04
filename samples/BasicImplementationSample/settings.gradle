@@ -1,0 +1,2 @@
+include ':app', ':DatabaseLibrary'
+project(':DatabaseLibrary').projectDir = new File('../../DatabaseLibrary')
