@@ -15,7 +15,13 @@ buildscript {
 allprojects {
     repositories {
         jcenter()
-        maven { url '/Users/witkurowski/Library/Android/sdk/extras/android/m2repository' }
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+        def androidHome = properties.getProperty('sdk.dir', null)
+
+        maven {
+            url "$androidHome/extras/android/m2repository"
+        }
     }
 }
 
