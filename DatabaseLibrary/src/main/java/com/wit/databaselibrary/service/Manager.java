@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -265,7 +266,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Deletes the given {@link DatabaseObject} if the current saved state of it satisfies the given
+	 * Deletes the given {@link DatabaseObject} if the current saved state of it satisfies the
+	 * given
 	 * where clause and arguments.  Note that the object ID matching condition will be added to the
 	 * where clause and argument list.
 	 *
@@ -329,85 +331,110 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		for ( final Field declaredField : declaredFields ) {
 			final Column column = declaredField.getAnnotation( Column.class );
-			final String columnName = column.columnName();
 
-			if ( !columnName.equals( BaseColumns._ID ) &&
-					!columnName.equals( Contract.Columns.VERSION ) ) {
-				final ColumnType columnType = column.columnType();
-				final String name = declaredField.getName();
-				final String getterMethodName = "get" + name.substring( 0, 1 ).toUpperCase() +
-						name.substring( 1 );
-				final Method declaredGetterMethod;
+			if ( column != null ) {
+				final String columnName = column.columnName();
 
-				try {
-					declaredGetterMethod = this.parameterClass
-							.getDeclaredMethod( getterMethodName, new Class<?>[ 0 ] );
-				} catch ( final NoSuchMethodException noSuchMethodException ) {
-					throw new InvalidClassDefinitionException( "Unable to get find method '" +
-							getterMethodName + "()'.", noSuchMethodException );
+				if ( !columnName.equals( BaseColumns._ID ) &&
+						!columnName.equals( Contract.Columns.VERSION ) ) {
+					final ColumnType columnType = column.columnType();
+					final String name = declaredField.getName();
+					final String getterMethodName = "get" + name.substring( 0, 1 ).toUpperCase() +
+							name.substring( 1 );
+					final Method declaredGetterMethod;
 
-				}
+					try {
+						declaredGetterMethod = this.parameterClass
+								.getDeclaredMethod( getterMethodName, new Class<?>[ 0 ] );
+					} catch ( final NoSuchMethodException noSuchMethodException ) {
+						throw new InvalidClassDefinitionException( "Unable to get find method '" +
+								getterMethodName + "()'.", noSuchMethodException );
 
-				switch ( columnType ) {
-					case INTEGER: {
-						final Integer value;
-
-						try {
-							value = (Integer) declaredGetterMethod
-									.invoke( object, new Object[ 0 ] );
-						} catch ( final InvocationTargetException invocationTargetException ) {
-							throw new IllegalStateException( "Unable to get value of type '" +
-									columnType + "' from method '" + getterMethodName + "()'.",
-									invocationTargetException );
-						} catch ( final IllegalAccessException illegalAccessException ) {
-							throw new InvalidClassDefinitionException(
-									"Unable to get value of type '" + columnType +
-											"' from method '" + getterMethodName + "()'.",
-									illegalAccessException );
-						}
-
-						contentValues.put( columnName, value );
-
-						break;
 					}
-					case LONG: {
-						final Long value;
 
-						try {
-							value = (long) declaredGetterMethod.invoke( object, new Object[ 0 ] );
-						} catch ( final IllegalAccessException illegalAccessException ) {
-							throw new IllegalStateException( "Unable to get value of type '" +
-									columnType + "' from method '" + getterMethodName + "()'.",
-									illegalAccessException );
-						} catch ( final InvocationTargetException invocationTargetException ) {
-							throw new IllegalStateException( "Unable to get value of type '" +
-									columnType + "' from method '" + getterMethodName + "()'.",
-									invocationTargetException );
+					switch ( columnType ) {
+						case DATE: {
+							final Long value;
+
+							try {
+								final Date dateValue = (Date) declaredGetterMethod
+										.invoke( object, new Object[ 0 ] );
+								value = dateValue.getTime();
+							} catch ( final IllegalAccessException illegalAccessException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										illegalAccessException );
+							} catch ( final InvocationTargetException invocationTargetException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										invocationTargetException );
+							}
+
+							contentValues.put( columnName, value );
+
+							break;
 						}
+						case INTEGER: {
+							final Integer value;
 
-						contentValues.put( columnName, value );
+							try {
+								value = (Integer) declaredGetterMethod
+										.invoke( object, new Object[ 0 ] );
+							} catch ( final InvocationTargetException invocationTargetException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										invocationTargetException );
+							} catch ( final IllegalAccessException illegalAccessException ) {
+								throw new InvalidClassDefinitionException(
+										"Unable to get value of type '" + columnType +
+												"' from method '" + getterMethodName + "()'.",
+										illegalAccessException );
+							}
 
-						break;
-					}
-					case STRING: {
-						final String value;
+							contentValues.put( columnName, value );
 
-						try {
-							value = (String) declaredGetterMethod.invoke( object, new Object[ 0
-									] );
-						} catch ( final IllegalAccessException illegalAccessException ) {
-							throw new IllegalStateException( "Unable to get value of type '" +
-									columnType + "' from method '" + getterMethodName + "()'.",
-									illegalAccessException );
-						} catch ( final InvocationTargetException invocationTargetException ) {
-							throw new IllegalStateException( "Unable to get value of type '" +
-									columnType + "' from method '" + getterMethodName + "()'.",
-									invocationTargetException );
+							break;
 						}
+						case LONG: {
+							final Long value;
 
-						contentValues.put( columnName, value );
+							try {
+								value = (long) declaredGetterMethod
+										.invoke( object, new Object[ 0 ] );
+							} catch ( final IllegalAccessException illegalAccessException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										illegalAccessException );
+							} catch ( final InvocationTargetException invocationTargetException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										invocationTargetException );
+							}
 
-						break;
+							contentValues.put( columnName, value );
+
+							break;
+						}
+						case STRING: {
+							final String value;
+
+							try {
+								value = (String) declaredGetterMethod
+										.invoke( object, new Object[ 0 ] );
+							} catch ( final IllegalAccessException illegalAccessException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										illegalAccessException );
+							} catch ( final InvocationTargetException invocationTargetException ) {
+								throw new IllegalStateException( "Unable to get value of type '" +
+										columnType + "' from method '" + getterMethodName + "()'.",
+										invocationTargetException );
+							}
+
+							contentValues.put( columnName, value );
+
+							break;
+						}
 					}
 				}
 			}
@@ -696,13 +723,16 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Returns the number of {@link DatabaseObject}s that are saved that satisfy the given selection
+	 * Returns the number of {@link DatabaseObject}s that are saved that satisfy the given
+	 * selection
 	 * criteria.
 	 *
-	 * @param selectionClause The selection clause to use to narrow down the {@link DatabaseObject}s
+	 * @param selectionClause The selection clause to use to narrow down the
+	 * {@link DatabaseObject}s
 	 * to include in the count.
 	 * @param selectionArgs The values to replace the placeholders with in the selection clause.
-	 * @return The number of {@link DatabaseObject}s that are saved that satisfy the given selection
+	 * @return The number of {@link DatabaseObject}s that are saved that satisfy the given
+	 * selection
 	 * criteria.
 	 */
 	public final int getCount( final String selectionClause, final List<String> selectionArgs ) {
@@ -728,7 +758,8 @@ public abstract class Manager<T extends DatabaseObject> {
 	}
 
 	/**
-	 * Creates a new object of type {@link T} with all the same fields as an existing object of type
+	 * Creates a new object of type {@link T} with all the same fields as an existing object of
+	 * type
 	 * {@link T}, but with a new ID.
 	 *
 	 * @param oldObject The existing object to pull fields from.
@@ -753,7 +784,8 @@ public abstract class Manager<T extends DatabaseObject> {
 					illegalAccessException );
 		} catch ( final NoSuchFieldException noSuchFieldException ) {
 			throw new IllegalStateException(
-					"Unable to find 'id' field in 'DatabaseObject' class.", noSuchFieldException );
+					"Unable to find 'id' field in 'DatabaseObject' " + "class.",
+					noSuchFieldException );
 		}
 
 		return newObject;
@@ -847,39 +879,46 @@ public abstract class Manager<T extends DatabaseObject> {
 
 		for ( final Field declaredField : declaredFields ) {
 			final Column column = declaredField.getAnnotation( Column.class );
-			final String columnName = column.columnName();
-			final int index = cursor.getColumnIndex( columnName );
-			final ColumnType columnType = column.columnType();
-			final Object value;
 
-			switch ( columnType ) {
-				case INTEGER:
-					value = cursor.getInt( index );
+			if (column != null) {
+				final String columnName = column.columnName();
+				final int index = cursor.getColumnIndex( columnName );
+				final ColumnType columnType = column.columnType();
+				final Object value;
 
-					break;
-				case LONG:
-					value = cursor.getLong( index );
+				switch ( columnType ) {
+					case DATE:
+						value = new Date( cursor.getLong( index ) );
 
-					break;
-				case STRING:
-					value = cursor.getString( index );
+						break;
+					case INTEGER:
+						value = cursor.getInt( index );
 
-					break;
-				default:
-					throw new IllegalArgumentException( "Found unknown column type '" +
-							columnType + "'." );
-			}
+						break;
+					case LONG:
+						value = cursor.getLong( index );
 
-			try {
-				declaredField.setAccessible( true );
-				declaredField.set( databaseObject, value );
-			} catch ( final IllegalAccessException illegalAccessException ) {
-				final String name = declaredField.getName();
+						break;
+					case STRING:
+						value = cursor.getString( index );
 
-				throw new IllegalStateException(
-						String.format( "Unable to access '$1%s' field in '$2%s' class.", name,
-								this.parameterClass.getSimpleName() ),
-						illegalAccessException );
+						break;
+					default:
+						throw new IllegalArgumentException( "Found unknown column type '" +
+								columnType + "'." );
+				}
+
+				try {
+					declaredField.setAccessible( true );
+					declaredField.set( databaseObject, value );
+				} catch ( final IllegalAccessException illegalAccessException ) {
+					final String name = declaredField.getName();
+
+					throw new IllegalStateException(
+							String.format( "Unable to access '$1%s' field in '$2%s' class.", name,
+									this.parameterClass.getSimpleName() ), illegalAccessException );
+
+				}
 			}
 		}
 	}
@@ -894,15 +933,13 @@ public abstract class Manager<T extends DatabaseObject> {
 
 				final Object value = declaredField.get( sourceDatabaseObject );
 
-				declaredField.set( destinationDatabaseObject,
-						value );
+				declaredField.set( destinationDatabaseObject, value );
 			} catch ( final IllegalAccessException illegalAccessException ) {
 				final String name = declaredField.getName();
 
 				throw new IllegalStateException(
 						String.format( "Unable to access '$1%s' field in '$2%s' class.", name,
-								this.parameterClass.getSimpleName() ),
-						illegalAccessException );
+								this.parameterClass.getSimpleName() ), illegalAccessException );
 			}
 		}
 	}

@@ -100,6 +100,10 @@ public abstract class Contract<T extends DatabaseObject> {
 				final String columnTypeString;
 
 				switch ( columnType ) {
+					case DATE:
+						columnTypeString = "INTEGER";
+
+						break;
 					case INTEGER:
 						columnTypeString = "INTEGER";
 

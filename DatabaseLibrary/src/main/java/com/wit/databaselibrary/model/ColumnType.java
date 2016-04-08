@@ -1,5 +1,5 @@
 package com.wit.databaselibrary.model;
 
 public enum ColumnType {
-	INTEGER, LONG, STRING
+	DATE, INTEGER, LONG, STRING
 }
