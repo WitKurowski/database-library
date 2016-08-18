@@ -1,5 +1,7 @@
 apply plugin: 'java'
 
+version = '0.1'
+
 dependencies {
     compile 'com.google.android:android:2.3.3'
     compile 'org.apache.commons:commons-lang3:3.4'
